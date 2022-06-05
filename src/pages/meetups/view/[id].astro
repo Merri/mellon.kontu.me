@@ -9,7 +9,7 @@ import type { Meetup, Place, Registration } from "$/types/db";
 import PageHeader from "$/components/PageHeader.astro";
 import { meetupToZonedTime } from '$/lib/date';
 import { format } from 'date-fns-tz';
-import locale from 'date-fns/locale/fi'
+import locale from 'date-fns/locale/fi/index.js'
 import PageFooter from '$/components/PageFooter.astro';
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
