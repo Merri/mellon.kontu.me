@@ -1,0 +1,62 @@
+---
+export interface Props {
+	title: string;
+	description: string;
+	fixPathname?: string;
+}
+
+import './normalize.css';
+import 'sanitize.css';
+import 'sanitize.css/assets.css';
+import 'sanitize.css/forms.css';
+import 'sanitize.css/typography.css';
+
+import { getPermalink } from '$/lib/getPermalink';
+
+const { title, description, fixPathname } = Astro.props;
+const permalink = getPermalink(Astro.canonicalURL, fixPathname);
+
+const social = new URL('/assets/social.jpg', Astro.canonicalURL.origin).toString();
+
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Primary Meta Tags -->
+<title>{title}</title>
+<meta name="title" content={title} />
+<meta name="description" content={description} />
+<link rel="canonical" href={permalink} />
+{fixPathname && <>
+	<script is:inline>!function(url) {
+		history.replaceState(null, undefined, url.pathname)
+		}(new URL(document.querySelector('[rel="canonical"]').getAttribute('href')))</script>
+	<noscript>
+		<meta http-equiv="refresh" content={`0;url=${fixPathname}`} />
+	</noscript>
+</>}
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content={permalink} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={social} />
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content={permalink} />
+<meta property="twitter:title" content={title} />
+<meta property="twitter:description" content={description} />
+<meta property="twitter:image" content={social} />
+<!-- FavIcon -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#694916" />
+<meta name="apple-mobile-web-app-title" content="Mellon" />
+<meta name="application-name" content="Mellon" />
+<meta name="msapplication-TileColor" content="#4f8c31" />
+<meta name="theme-color" content="#ffffff" />
+<!-- Annoyances -->
+<meta name="format-detection" content="telephone=no" />
+<!-- -->

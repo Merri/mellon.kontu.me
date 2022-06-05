@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"module": "es2020",
+		"moduleResolution": "node",
+		"baseUrl": ".",
+		"paths": {
+			"$/*": ["src/*"],
+			"$layouts/*": ["src/layouts/*"]
+		},
+		"esModuleInterop": true,
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
+		"strict": true
+	},
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist", "public"]
+}

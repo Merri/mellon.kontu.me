@@ -1,0 +1,56 @@
+---
+import { isBefore } from "date-fns";
+
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { meetupToZonedTime } from "$/lib/date";
+import { sql } from "$/lib/db";
+import type { Meetup } from "$/types/db";
+
+const allMeetups = (await sql<Meetup[]>`SELECT * FROM meetups ORDER BY "begin" DESC`).map(meetupToZonedTime)
+const now = new Date()
+
+const meetupsInProgress = allMeetups.filter(meetup => meetup.begin && meetup.end && isBefore(meetup.begin, now) && isBefore(now, meetup.end))
+const upcomingMeetups = allMeetups.filter(meetup => meetup.begin == null || isBefore(now, meetup.begin))
+const pastMeetups = allMeetups.filter(meetup => !meetupsInProgress.includes(meetup) && !upcomingMeetups.includes(meetup))
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Kaikki miitit"
+	description="Mellonin kautta on järjestetty miittejä vuodesta 2017, joten niitä on jo aika monta!" />
+
+<body>
+
+	<PageHeader />
+
+	<main id="main">
+		<h1>Miitit</h1>
+		<p>Puuttuuko miitti? <a href="/meetups/add">Lisää uusi miitti!</a></p>
+		{meetupsInProgress.length > 0 && <>
+			<h2>Meneillään olevat miitit</h2>
+			<ul>
+				{meetupsInProgress.map(meetup => <li><a href={`/meetups/view/${meetup.id}`}>{meetup.title}</a></li>)}
+			</ul>
+		</>}
+		{upcomingMeetups.length > 0 && <>
+			<h2>Tulevat miitit</h2>
+			<ul>
+				{upcomingMeetups.map(meetup => <li><a href={`/meetups/view/${meetup.id}`}>{meetup.title}</a></li>)}
+			</ul>
+		</>}
+		{pastMeetups.length > 0 && <>
+			<h2>Menneet miitit</h2>
+			<ul>
+				{pastMeetups.map(meetup => <li><a href={`/meetups/view/${meetup.id}`}>{meetup.title}</a></li>)}
+			</ul>
+		</>}
+	</main>
+
+	<PageFooter />
+
+</body>
+
+</html>

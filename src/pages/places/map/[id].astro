@@ -1,0 +1,24 @@
+---
+import { sql } from '$/lib/db'
+import { transparentPixel } from '$/lib/transparentPixel';
+import type { Place } from "$/types/db";
+
+const id = Math.round(Number(Astro.params.id))
+
+const zoomMap = new Map([['1', 10], ['2', 12], ['3', 16]])
+const zoom = zoomMap.get(new URL(Astro.request.url).searchParams.get('zoom') ?? '') ?? 8
+
+const [place] = id > 0 ? await sql<Place[]>`SELECT * FROM places WHERE id = ${id}` : []
+
+if (place && place.latitude && place.longitude) {
+	const image = await fetch(`https://api.tomtom.com/map/1/staticimage?key=${import.meta.env.TOMTOM_API_KEY}&zoom=${zoom}&center=${place.longitude},${place.latitude}&format=jpg&layer=basic&style=main&width=2610&height=1496&view=Unified&language=fi-FI`)
+	return new Response(await image.blob(), { headers: { 'Cache-Control': 'public, max-age=604800' } })
+}
+
+return new Response(
+	transparentPixel,
+	{ headers: { 'Cache-Control': 'public, max-age=60', 'Content-Type': 'image/png' }, status: 404 }
+)
+
+---
+

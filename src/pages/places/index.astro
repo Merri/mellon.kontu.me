@@ -1,0 +1,54 @@
+---
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { sql } from "$/lib/db";
+import type { Place } from "$/types/db";
+
+type PlaceWithMeetCount = Place & { meetCount: number }
+
+const placesWithMeetups = await sql<PlaceWithMeetCount[]>`
+	SELECT places.*, COUNT(*) as "meetCount"
+	FROM places
+	INNER JOIN "meetups" ON meetups."placeId" = places."id"
+	WHERE NOT meetups."placeId" IS NULL
+	GROUP BY places."id"
+	ORDER BY "meetCount" DESC
+`
+
+const otherPlaces = await sql<PlaceWithMeetCount[]>`
+	SELECT *, 0 as "meetCount"
+	FROM places
+	WHERE NOT "id" IN ${sql(placesWithMeetups.map(place => place.id))}
+	ORDER BY "name"
+`
+
+const places = placesWithMeetups.concat(otherPlaces)
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Kaikki miittipaikat"
+	description="Melloniin on kertynyt jokusia miittipaikkoja, eritoten leirikeskuksia." />
+
+<body>
+
+	<PageHeader />
+
+	<main id="main">
+		<h1>Miittipaikat</h1>
+		<p>Puuttuuko miittipaikka? <a href="/places/add">Lisää uusi miittipaikka!</a></p>
+		{places.length > 0 && <>
+			<ul>
+				{places.map(place => <li><a href={`/places/view/${place.id}`}>{place.name}</a> ({place.meetCount}
+					miittiä)</li>)}
+			</ul>
+		</>}
+	</main>
+
+	<PageFooter />
+
+</body>
+
+</html>

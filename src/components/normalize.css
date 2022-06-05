@@ -1,0 +1,54 @@
+:root {
+	--font-serif: 'Palatino Linotype', Palatino, Palladio, 'URW Palladio L', 'Book Antiqua', Baskerville,
+		'Bookman Old Style', 'Bitstream Charter', 'Nimbus Roman No9 L', Garamond, 'Apple Garamond',
+		'ITC Garamond Narrow', 'New Century Schoolbook', 'Century Schoolbook', 'Century Schoolbook L', Georgia, ui-serif,
+		serif;
+	--link-color: #4F8C31;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	margin: auto;
+	max-width: 70rem;
+	min-height: 100vh;
+}
+
+main {
+	flex-grow: 1;
+	padding: 1rem;
+}
+
+:where(:link,:visited) {
+	color: var(--link-color);
+	text-underline-offset: 2px;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+	font-family: var(--font-serif);
+	line-height: 1.25;
+}
+
+:where(h1) {
+	font-size: 2em;
+}
+
+:where(h2) {
+	font-size: 1.75rem;
+}
+
+:where(h3) {
+	font-size: 1.5rem;
+}
+
+:where(h4) {
+	font-size: 1.375rem;
+}
+
+:where(h5) {
+	font-size: 1.25rem;
+}
+
+:where(h6) {
+	font-size: 1.125rem;
+}

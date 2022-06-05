@@ -1,0 +1,140 @@
+---
+import { marked } from 'marked'
+import BaseHead from "$/components/BaseHead.astro";
+import cookie from 'cookie'
+import { isBefore, endOfDay, isSameDay, addMinutes } from 'date-fns'
+
+import { sql } from '$/lib/db'
+import type { Meetup, Place, Registration } from "$/types/db";
+import PageHeader from "$/components/PageHeader.astro";
+import { meetupToZonedTime } from '$/lib/date';
+import { format } from 'date-fns-tz';
+import locale from 'date-fns/locale/fi'
+import PageFooter from '$/components/PageFooter.astro';
+
+const opts = { locale, timeZone: 'Europe/Helsinki' }
+
+const id = Math.round(Number(Astro.params.id))
+
+const store = cookie.parse(Astro.request.headers.get('cookie') || '');
+
+console.log('store', store)
+
+const [meetup] = id > 0 ? (await sql<Meetup[]>`SELECT * FROM meetups WHERE id = ${id}`).map(meetupToZonedTime) : []
+
+if (meetup == null) {
+	return new Response(null, {
+		status: 404,
+		statusText: 'Not found'
+	});
+}
+
+const [place] = await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`
+const [{ name: organizerName }] =
+	(meetup.organizer === 'member' && await sql<{ name: string }[]>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`) ||
+	(meetup.organizer === 'organization' && meetup.organizationId && await sql<{ name: string }[]>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`) ||
+	[{ name: undefined }]
+
+const registrations = await sql<Registration[]>`SELECT * FROM registrations WHERE "meetupId" = ${id}`
+
+const registrationOpens = meetup.open != null && isBefore(new Date(), meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
+const registrationCloseDate = meetup.begin ? meetup.end ? isSameDay(meetup.begin, meetup.end) ? addMinutes(meetup.begin, -5) : endOfDay(meetup.begin) : meetup.begin : null
+const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(new Date(), registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
+
+const meetupWasInThePast = meetup.end == null || isBefore(meetup.end, new Date())
+const textRegister = meetupWasInThePast ? 'Ilmoittautui' : 'Ilmoittautunut'
+const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Osallistumassa'
+const textCancel = meetupWasInThePast ? 'Perui' : 'Perunut'
+const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
+
+---
+
+<html lang="fi">
+
+<BaseHead title={meetup.title} description="Miitti" />
+
+<body>
+	<PageHeader />
+	<main id="main">
+		<h1 style="margin-bottom:0">{meetup.title}</h1>
+		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
+		<div set:html={marked(meetup.description || undefined)} />
+		<h2>Muita yleisiä tietoja</h2>
+		<ul>
+			{registrationOpens && <li>Ilmoittautuminen aukeaa {registrationOpens}</li>}
+			{registrationCloses && <li>Ilmoittautuminen sulkeutuu {registrationCloses}</li>}
+			{meetup.isFree ? <li>Miitti on maksuton</li> : <li>Miitti ei ole ilmainen</li>}
+			{meetup.enableDailyVisitors && <li>Miitissä saa käydä päivävierailulla</li>}
+			{meetup.ageLimit > 0 && <li>Ikäraja: {meetup.ageLimit}</li>}
+		</ul>
+		{meetup.contactUrl && <p>Lisätietoja: <a
+				href={`${meetup.contactUrl}`}>{decodeURIComponent(meetup.contactUrl)}</a></p>}
+		{meetup.contactEmail && <p>Yhteydenotot: <a href={`mailto:${meetup.contactEmail}`}>{meetup.contactEmail}</a></p>
+		}
+		{place && <>
+			<h2>Miittipaikka</h2>
+			<p>
+				<strong>{place.name}</strong>
+				{place.streetAddress && <><br />{place.streetAddress}<br />{place.postalCode}{' '}{place.location}</>}
+			</p>
+			{meetup.beds > 0 && <p>Sänkypaikkoja: {meetup.beds} {meetup.enableCampignMembers && <span> (miitissä on
+					mahdollista telttailla)</span>}</p>}
+			{place.longitude ? <img loading="lazy" alt="" src={`/places/map/${place.id}?zoom=3`} width="1305"
+				height="748" /> :
+			<hr />}
+			{place.description &&
+			<div set:html={marked(place.description)} />}
+			{place.howToGetThere && <>
+				<h3>Saapumisohjeet</h3>
+				<div set:html={marked(place.howToGetThere)} />
+			</>}
+		</>}
+		{registrations.length > 0 && <>
+			<h2>Ilmoittautuneet</h2>
+			<table>
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Nimimerkki / julkinen nimi</th>
+						<th>Ilmoittautumisen tila</th>
+					</tr>
+				</thead>
+				<tbody>
+					{registrations.map((registration, index) => <tr>
+						<td>{index + 1}</td>
+						<td>{registration.publicname}</td>
+						<td>{(registration.cancelled && textCancel) || (registration.confirmed && textConfirm) ||
+							(registration.registered && textRegister) || textAdded}</td>
+					</tr>)}
+				</tbody>
+			</table>
+			<style>
+				table {
+					--odd-cell-color: #f5f5f5;
+					border-spacing: 1rem 0.5rem;
+					border-collapse: separate;
+					margin: 1rem -1rem;
+				}
+
+				td,
+				th {
+					text-align: left;
+				}
+
+				td:first-child,
+				th:first-child {
+					text-align: right;
+				}
+
+				tbody>tr:nth-child(odd)>td {
+					background-color: var(--odd-cell-color);
+					box-shadow: -0.25rem 0 0 0.25rem var(--odd-cell-color), 0.25rem 0 0 0.25rem var(--odd-cell-color);
+				}
+			</style>
+		</>}
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>

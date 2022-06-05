@@ -1,0 +1,78 @@
+---
+import { format } from 'date-fns-tz'
+import locale from 'date-fns/locale/fi'
+import BaseHead from "$/components/BaseHead.astro";
+import Fellowship from "$/components/Fellowship.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { sql } from "$/lib/db";
+import { Meetup, Place } from "$/types/db";
+import { getYmdUTC, meetupToZonedTime } from '$/lib/date';
+import PageFooter from '$/components/PageFooter.astro';
+
+const opts = { locale, timeZone: 'Europe/Helsinki' }
+
+const upcomingMeetups = (await sql<Meetup[]>`SELECT * FROM meetups WHERE meetups.end >= ${getYmdUTC()}`).map(meetupToZonedTime)
+
+const placeIds = new Set(upcomingMeetups.map(({ placeId }) => placeId))
+
+const places = placeIds.size ? await sql<Place[]>`SELECT * FROM places WHERE id IN ${sql([...placeIds])}` : []
+const placeMap = new Map<number, Place>()
+places.forEach(place => {
+	placeMap.set(place.id, place)
+})
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Mellon — Tule, ystävä, ja ilmoittaudu miittiin!"
+	description="Konnun miitteihin ilmoittautumispaikka." />
+
+<body>
+	<PageHeader />
+
+	<main id="main">
+		<h1>Tervetuloa, ystävä!</h1>
+		<p>Mellonissa voi ilmoittautua miitteihin.</p>
+		<h2>Tulevat miitit</h2>
+		{upcomingMeetups.length > 0 ? <dl>
+			{upcomingMeetups.map(meetup => <div>
+				<dt>
+					<a href={`/meetups/view/${meetup.id}`}><strong>{meetup.title}</strong></a>
+				</dt>
+				<dd>
+					{placeMap.get(meetup.placeId)?.name}<br />
+					{meetup.begin && format(meetup.begin, 'EEEEEE d.M.yyyy', opts)} &ndash; {meetup.end &&
+					format(meetup.end, 'EEEEEE d.M.yyyy', opts)}<br />
+					{meetup.open && <span>Ilmoittautuminen alkaa
+						{format(meetup.open, `d.M.yyyy 'klo' H:mm`, opts)}</span>}
+				</dd>
+			</div>)}
+		</dl> :
+		<p>Tällä hetkellä ei ole tulevia miittejä.</p>}
+		<p><a href="/meetups/add">Lisää uusi miitti</a></p>
+	</main>
+	<style>
+		dl {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 1rem;
+			margin: 1rem;
+		}
+
+		dt {
+			font-size: 1.25rem;
+		}
+
+		dd {
+			margin: 0;
+			padding: 0.25rem;
+		}
+	</style>
+
+	<Fellowship />
+
+	<PageFooter />
+</body>
+
+</html>

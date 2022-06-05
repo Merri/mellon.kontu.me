@@ -1,0 +1,31 @@
+---
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Omat tiedot Mellonissa" description="Käyttäjätiedot Mellonissa ja tietoa tietosuojasta" />
+
+<body>
+	<PageHeader />
+	<main id="main">
+		<h1>Omat tiedot</h1>
+
+		<h2>Tietosuojasta</h2>
+		<p>
+			Mellon kerää välttämättömiä tietoja miittien järjestämisen mahdollistamiseksi, sekä käyttää evästeitä
+			käyttäjän tunnistamiseen. Rekisteriin tallennetaan nimi, sähköpostiosoite ja syntymäpäivä. Näitä tietoja ei
+			paljasteta muille palvelun käyttäjille: ainut näytettävä tieto on julkinen nimi / nimimerkki, sekä tieto
+			osallistumisesta tai perumisesta. Tapahtuman järjestäjä saa tietoonsa vapaamuotoinen kentän joka voi
+			sisältää henkilökohtaisia terveystietoja kuten allergiat. Järjestäjä saa tietää osallistujan iän tapahtuman
+			alkamispäivänä, mutta ei syntymäpäivää.
+		</p>
+		<p>Palvelu ei käytä kolmannen osapuolen evästeitä.</p>
+	</main>
+	<PageFooter />
+</body>
+
+</html>
