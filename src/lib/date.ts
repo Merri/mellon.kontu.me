@@ -1,7 +1,9 @@
-import { format, utcToZonedTime } from 'date-fns-tz'
+import dateFnsTz from 'date-fns-tz'
 import locale from 'date-fns/locale/fi/index.js'
 
 import type { Meetup } from '$/types/db'
+
+const { format, utcToZonedTime } = dateFnsTz
 
 const tz = 'Europe/Helsinki'
 
