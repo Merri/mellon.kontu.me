@@ -21,11 +21,13 @@ function logError(error: Error | null) {
 	}
 }
 
+/** Get sanitized from/to field. */
+export function sanitizeEmailField(name: string, email: string) {
+	return `"${name.replace(/"|\\/g, '')}" <${email.replace(/<|>|"|\\/g, '')}>`
+}
+
 /** App primary email for from/to field. */
-export const appEmailField = `"${import.meta.env.PRIMARY_EMAIL_NAME.replace(
-	/"|\\/g,
-	''
-)}" <${import.meta.env.PRIMARY_EMAIL_FROM.replace(/<|>|"|\\/g, '')}>`
+export const appEmailField = sanitizeEmailField(import.meta.env.PRIMARY_EMAIL_NAME, import.meta.env.PRIMARY_EMAIL_FROM)
 
 /** Get member email for from/to field. */
 export function getMemberEmailField(member: Member) {
@@ -34,8 +36,8 @@ export function getMemberEmailField(member: Member) {
 		return undefined
 	}
 
-	const receiver = `${member.fullname || member.publicname || member.email}`.replace(/"|\\/g, '')
-	return `"${receiver}" <${member.email.replace(/<|>|"|\\/g, '')}>`
+	const receiver = `${member.fullname || member.publicname || member.email}`
+	return sanitizeEmailField(receiver, member.email)
 }
 
 /** Sends mail defaulting sender to the app primary email. */

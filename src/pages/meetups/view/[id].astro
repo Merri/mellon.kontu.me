@@ -1,7 +1,6 @@
 ---
 import { marked } from 'marked'
 import BaseHead from "$/components/BaseHead.astro";
-import cookie from 'cookie'
 import { isBefore, endOfDay, isSameDay, addMinutes } from 'date-fns'
 
 import { sql } from '$/lib/db'
@@ -15,10 +14,6 @@ import PageFooter from '$/components/PageFooter.astro';
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
 const id = Math.round(Number(Astro.params.id))
-
-const store = cookie.parse(Astro.request.headers.get('cookie') || '');
-
-console.log('store', store)
 
 const [meetup] = id > 0 ? (await sql<Meetup[]>`SELECT * FROM meetups WHERE id = ${id}`).map(meetupToZonedTime) : []
 

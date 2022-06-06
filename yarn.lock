@@ -488,6 +488,11 @@
   dependencies:
     "@types/estree" "*"
 
+"@types/cookie@0.5.1":
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/@types/cookie/-/cookie-0.5.1.tgz#b29aa1f91a59f35e29ff8f7cb24faf1a3a750554"
+  integrity sha512-COUnqfB2+ckwXXSFInsFdOAWQzCCx+a5hq2ruyj+Vjund94RJQd4LG2u9hnvJrTgunKAaax7ancBYlDrNYxA0g==
+
 "@types/d3-color@^3.0.2":
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/@types/d3-color/-/d3-color-3.1.0.tgz#6594da178ded6c7c3842f3cc0ac84b156f12f2d4"
@@ -530,6 +535,18 @@
   version "0.0.30"
   resolved "https://registry.yarnpkg.com/@types/json5/-/json5-0.0.30.tgz#44cb52f32a809734ca562e685c6473b5754a7818"
   integrity sha512-sqm9g7mHlPY/43fcSNrCYfOeX9zkTTK+euO5E6+CVijSMm5tTjkVdwdqRkY3ljjIAf8679vps5jKUoJBCLsMDA==
+
+"@types/jsonwebtoken@8.5.8":
+  version "8.5.8"
+  resolved "https://registry.yarnpkg.com/@types/jsonwebtoken/-/jsonwebtoken-8.5.8.tgz#01b39711eb844777b7af1d1f2b4cf22fda1c0c44"
+  integrity sha512-zm6xBQpFDIDM6o9r6HSgDeIcLy82TKWctCXEPbJJcXb5AKmi5BNNdLXneixK4lplX3PqIVcwLBCGE/kAGnlD4A==
+  dependencies:
+    "@types/node" "*"
+
+"@types/marked@4.0.3":
+  version "4.0.3"
+  resolved "https://registry.yarnpkg.com/@types/marked/-/marked-4.0.3.tgz#2098f4a77adaba9ce881c9e0b6baf29116e5acc4"
+  integrity sha512-HnMWQkLJEf/PnxZIfbm0yGJRRZYYMhb++O9M36UCTA9z53uPvVoSlAwJr3XOpDEryb7Hwl1qAx/MV6YIW1RXxg==
 
 "@types/mdast@^3.0.0":
   version "3.0.10"
