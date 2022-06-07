@@ -3545,6 +3545,11 @@ path-to-regexp@^6.2.1:
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-6.2.1.tgz#d54934d6798eb9e5ef14e7af7962c945906918e5"
   integrity sha512-JLyh7xT1kizaEvcaXOQwOc2/Yhw6KZOvPf1S8401UyLk86CU79LN3vl7ztXGm/pZ+YjoyAJ4rxmHwbkBXJX+yw==
 
+phone@3.1.20:
+  version "3.1.20"
+  resolved "https://registry.yarnpkg.com/phone/-/phone-3.1.20.tgz#8b7b326c182ce70eaf7884eae3eee0cd6e7ee7b3"
+  integrity sha512-RR23OELEPPMWX3fz//ajrElna+9Y10iqBTL6W1SXHeQPnvpVd8ey2tYYcIH8lB70QL3QiTMDiSIwaINcde6SOw==
+
 picocolors@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.0.0.tgz#cb5bdc74ff3f51892236eaf79d68bc44564ab81c"

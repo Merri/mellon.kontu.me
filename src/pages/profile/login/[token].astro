@@ -1,70 +1,19 @@
 ---
-import BaseHead from "$/components/BaseHead.astro";
-import PageFooter from "$/components/PageFooter.astro";
-import PageHeader from "$/components/PageHeader.astro";
-import { getJwtPayload, getMemberIdFromCookie, getLoginCookie } from "$/lib/auth";
+import { getJwtPayload, getLoginCookie } from "$/lib/auth";
 import { sql } from "$/lib/db";
 import type { Member } from "$/types/db";
 
-if (typeof Astro.params.token !== 'string') {
-	return Astro.redirect('/profile')
-}
-
-const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
-if (memberId != null) {
-	return Astro.redirect('/profile')
-}
-
-const payload = getJwtPayload(Astro.params.token)
+const payload = typeof Astro.params.token === 'string' && getJwtPayload(Astro.params.token)
 if (!payload || typeof payload.email !== 'string') {
-	return Astro.redirect('/profile')
+	return Astro.redirect('/profile?dialog=invalid-login-token')
 }
 
 const member = (await sql<Member[]>`SELECT * FROM members WHERE email = ${payload.email}`).pop()
-if (!member) {
-	return Astro.redirect('/profile')
-}
 
-const dialog = new URL(Astro.request.url).searchParams.get('dialog')
-
-Astro.response.headers.set('Cache-Control', 'no-cache')
-Astro.response.headers.set('Set-Cookie', getLoginCookie(Astro.params.token))
-Astro.response.headers.set('X-Robots-Tag', 'noindex')
+const response = Astro.redirect(member ? '/profile/login' : '/profile/register')
+response.headers.set('Cache-Control', 'no-cache')
+response.headers.set('Set-Cookie', getLoginCookie(`${Astro.params.token}`))
+return response
 
 ---
 
-<html lang="fi">
-
-<BaseHead title="Kirjautuminen Melloniin" description="Yllätys! Tällä sivulla kirjaudutaan sisään." />
-
-<body>
-	<PageHeader />
-	<main id="main">
-		{dialog === 'login-failed' && <div>Kirjautuminen ei onnistunut.</div>}
-		<h1>Kirjautuminen</h1>
-		<form action="/profile/complete-login-by-email" method="POST">
-			<p>Olet kirjautumassa sisään sähköpostilinkillä. Vahvista kirjautuminen antamalla syntymäpäiväsi.</p>
-			<p>
-				<label>Syntymäpäivä muodossa VVVV-KK-PP: <input id="dob" name="dob" placeholder="VVVV-KK-PP" required
-						type="text" value="" /></label><br /><small>Esimerkiksi 2001-12-19</small>
-			</p>
-			<!--p>
-				Kirjautumisen kesto tässä selaimessa:<br />
-				<br />
-				<label><input type="radio" name="duration" value="session" required checked /> Kunnes suljen
-					selaimen</label> (julkinen kone)<br />
-				<label><input type="radio" name="duration" value="week" required /> Viikon</label><br />
-				<label><input type="radio" name="duration" value="month" required /> Kuukauden</label><br />
-				<label><input type="radio" name="duration" value="year" required /> Vuoden</label><br />
-				<br />
-				<small>Lyhemmät ajat ovat turvallisempia ja siten suositellumpia.</small>
-			</p-->
-			<p>
-				<button type="submit">Kirjaudu</button>
-			</p>
-		</form>
-	</main>
-	<PageFooter />
-</body>
-
-</html>

@@ -14,8 +14,8 @@ export function getJwtToken(member: Member) {
 }
 
 /** Token for email login. */
-export function getJwtTokenForEmail(email: string) {
-	return JWT.sign({ email }, import.meta.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '2h' })
+export function getJwtTokenForLogin(payload: { email: string } & Record<string, string>) {
+	return JWT.sign(payload, import.meta.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '2h' })
 }
 
 export function getJwtPayload(token: string) {

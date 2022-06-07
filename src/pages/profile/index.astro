@@ -9,21 +9,22 @@ import { Member } from "$/types/db";
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
 const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
 
-if (member) {
-	Astro.response.headers.set('Cache-Control', 'private, max-age=30')
-	Astro.response.headers.set('Set-Cookie', getClearCookie('login'))
-	Astro.response.headers.set('X-Robots-Tag', 'noindex')
-} else if (memberId != null) {
+if (!member && memberId != null) {
 	Astro.response.headers.set('Set-Cookie', getClearCookie('token'))
 }
 
 const dialog = new URL(Astro.request.url).searchParams.get('dialog')
 const showLoggedOut = !member && dialog === 'logged-out'
 const showLoginLinkEmailSent = !member && dialog === 'login-link-email-sent'
+const showLoginInvalidCredentials = !member && dialog === 'login-invalid-credentials'
 const showLoginInvalidEmail = !member && dialog === 'login-invalid-email'
 const showLoginCompleted = !!member && dialog === 'login-completed'
+const showRegisterCompleted = !!member && dialog === 'register-completed'
+const showInvalidLoginToken = !member && dialog === 'invalid-login-token'
+const showLoginFailed = !member && dialog === 'login-failed'
 
 if (member || dialog != null) {
+	Astro.response.headers.set('Cache-Control', 'private, max-age=30')
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
 }
 
@@ -36,11 +37,16 @@ if (member || dialog != null) {
 <body>
 	<PageHeader />
 	<main id="main">
+		{showLoginFailed && <div>Salasanaa tarkastaessa tapahtui odottamaton virhe, joten kirjautuminen ei onnistunut.
+		</div>}
+		{showInvalidLoginToken && <div>Virheellinen tai vanhentunut kirjautumistunniste.</div>}
+		{showRegisterCompleted && <div>Kiitos tunnuksen luomisesta! Voit nyt ilmoittautua miitteihin.</div>}
 		{showLoginCompleted && <div>Sinut on kirjattu sisään!</div>}
 		{showLoggedOut && <div>Sinut on kirjattu ulos!</div>}
 		{showLoginLinkEmailSent && <div>Kirjautumislinkki on lähetetty sähköpostiisi ja sen pitäisi saapua pian. Viesti
 			saattaa viipyä matkalla mm. työpaikkojen sähköpostien turvatarkistuksien vuoksi. Jos viesti ei saavu
 			perille, niin yritä uudelleen tai kokeile eri sähköpostiosoitetta.</div>}
+		{showLoginInvalidCredentials && <div>Kirjautuminen ei onnistunut: väärä salasana tai sähköpostiosoite.</div>}
 		{showLoginInvalidEmail && <div>Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.
 		</div>}
 
@@ -57,25 +63,34 @@ if (member || dialog != null) {
 				<h2>Tunnuksen tiedot</h2>
 				<p>
 					<label>Julkinen nimi / nimimerkki: <input id="publicname" name="publicname"
-							placeholder="Nimi ilmoittautumislistalla" required type="text"
-							value={member.publicname} /></label><br />
-					<small>Ilmoittautumislistalla kaikille näkyvä nimi, kuten nimimerkki, kutsumanimi tai oikea
+							placeholder="Nimi ilmoittautumislistalla" required type="text" value={member.publicname}
+							autocomplete="nickname" /></label><br />
+					<small>Pakollinen. Ilmoittautumislistalla näkyvä nimi, kuten nimimerkki, kutsumanimi tai oikea
 						etunimi.</small>
 				</p>
 				<p>
 					<label>Etu- ja sukunimi: <input id="fullname" name="fullname" placeholder="Oikea nimesi" required
-							type="text" value={member.fullname} /></label><br />
-					<small>Oikea nimesi paljastetaan ainoastaan tapahtuman järjestäjälle.</small>
+							type="text" value={member.fullname} autocomplete="name" /></label><br />
+					<small>Pakollinen. Tapahtuman järjestäjä saa tietää nimesi.</small>
 				</p>
 				<p>
-					<label>Syntymäpäivä muotoa VVVV-KK-PP: <input id="dob" name="dob" placeholder="VVVV-KK-PP" required
-							type="text" value={member.dob?.toISOString().slice(0, 10) || '' } /></label><br />
-					<small>Ikäsi tapahtuman alkaessa paljastetaan tapahtuman järjestäjälle, ei syntymäpäivääsi.</small>
+					<label>Syntymäpäivä muotoa VVVV-KK-PP: <input id="dob" name="dob" placeholder="2001-12-19" required
+							type="text" value={member.dob?.toISOString().slice(0, 10) || '' }
+							pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])"
+							autocomplete="off" /></label><br />
+					<small>Pakollinen. Esimerkki: 2001-12-19. Järjestäjä saa tietää ikäsi tapahtuman alkaessa, mutta ei
+						syntymäpäivääsi.</small>
 				</p>
 				<p>
-					<label>Puhelinnumero: <input id="phone" name="phone" placeholder="" type="tel"
-							value={member.phone} /></label><br />
-					<small>Puhelinnumero paljastetaan ainoastaan tapahtuman järjestäjälle.</small>
+					<label>Puhelinnumero: <input id="phone" name="phone" placeholder="+358401234567" type="tel"
+							value={member.phone} autocomplete="tel" /></label><br />
+					<small>Esimerkiksi +358401234567. Puhelinnumero paljastetaan ainoastaan tapahtuman
+						järjestäjälle.</small>
+				</p>
+				<p>
+					<label>Salasana: <input id="currentPassword" type="password" name="password" required
+							autocomplete="current-password" /></label><br />
+					<small>Vahvista tietojen päivitys antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
 					<button type="submit">Päivitä tiedot</button>
@@ -84,27 +99,27 @@ if (member || dialog != null) {
 			<h2>Vaihda sähköpostiosoite</h2>
 			<form action="/profile/update-email" method="POST">
 				<p>
-					<label>Uusi sähköpostiosoite: <input id="newEmail" type="email" name="email"
-							required /></label><br />
+					<label>Uusi sähköpostiosoite: <input id="newEmail" type="email" name="email" required
+							autocomplete="off" /></label><br />
 				</p>
 				<p>
-					<label>Salasana: <input id="newEmailPassword" type="password" name="password"
-							required /></label><br />
+					<label>Salasana: <input id="newEmailPassword" type="password" name="password" required
+							autocomplete="current-password" /></label><br />
 					<small>Vahvista sähköpostiosoitteen vaihto antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
-					<button type="submit">Vaihda sähköposti</button>
+					<button type="submit">Päivitä sähköposti</button>
 				</p>
 			</form>
 			<h2>Vaihda salasana</h2>
 			<form action="/profile/update-password" method="POST">
 				<p>
-					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="oldPassword"
-							required /></label><br />
+					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="oldPassword" required
+							autocomplete="current-password" /></label><br />
 				</p>
 				<p>
-					<label>Uusi salasana: <input id="newPassword" type="password" name="newPassword"
-							required /></label><br />
+					<label>Uusi salasana: <input id="newPassword" type="password" name="newPassword" required
+							autocomplete="new-password" /></label><br />
 					<small>
 						Vinkki: hyvä salasana on pitkä helposti muistettava lause.<br />
 						Esimerkki: örkiltä putosi pöksyt ja nyt minun pitää silittää ne
@@ -112,25 +127,32 @@ if (member || dialog != null) {
 				</p>
 				<p>
 					<label>Vahvista salasana: <input id="newConfirmPassword" type="password" name="confirmPassword"
-							required /></label><br />
+							required autocomplete="new-password" /></label><br />
 					<small>Kirjoita uusi salasana uudelleen.</small>
 				</p>
 				<p>
-					<button type="submit">Vaihda salasana</button>
+					<button type="submit">Päivitä salasana</button>
+				</p>
+			</form>
+			<h2>Unohtunut salasana</h2>
+			<p>Unohditko salasanasi? Pyydä salasananvaihtolinkki sähköpostiisi!</p>
+			<form action="/profile/forgot-password" method="POST">
+				<p>
+					<button type="submit">Lähetä vaihtolinkki</button>
 				</p>
 			</form>
 			<h2>Tunnuksen poistaminen</h2>
 			<p>Ota yhteys ylläpitoon: <a
 					href={`mailto:${import.meta.env.PRIMARY_EMAIL_FROM}`}>{import.meta.env.PRIMARY_EMAIL_FROM}</a></p>
 		</div> : <>
-			<p>Tarvitsee päästä miittiin mutta sinulla ei ole tunnusta? Pääset palveluun sisään sähköpostiosoitteella!
-			</p>
+			<p>Tarvitsee päästä miittiin mutta sinulla ei ole tunnusta? Pyydä linkki sähköpostiin!</p>
 			<div style="display:flex;flex-wrap:wrap;gap:1rem">
 				<form action="/profile/login-by-email" method="POST" style="flex:1 1 calc(50% - 1rem);min-width:20rem">
-					<h2>Kirjaudu sähköpostiosoitteella</h2>
+					<h2>Kirjaudu linkillä</h2>
 					<p>Saat sähköpostiisi linkin, jolla pääset sisään.</p>
 					<p>
-						<label>Sähköposti: <input type="email" name="email" required /></label><br />
+						<label>Sähköposti: <input id="email-by-link" type="email" name="email" required
+								autocomplete="email" /></label><br />
 					</p>
 					<p>
 						<button type="submit">Lähetä linkki</button>
@@ -140,9 +162,11 @@ if (member || dialog != null) {
 					style="flex:1 1 calc(50% - 1rem);min-width:20rem">
 					<h2>Kirjaudu salasanalla</h2>
 					<p>Salasanalla pääset kirjautumaan sisään välittömästi.</p>
-					<p><label>Sähköposti: <input type="email" name="email" required /><br /></label></p>
+					<p><label>Sähköposti: <input id="email-by-password" type="email" name="email" required
+								autocomplete="email" /><br /></label></p>
 					<p>
-						<label>Salasana: <input type="password" name="password" required /><br /></label>
+						<label>Salasana: <input id="password" type="password" name="password" minlength={8} required
+								autocomplete="current-password" /><br /></label>
 						<small>Unohditko salasanasi? Kirjaudu sisään sähköpostiosoitteella!</small>
 					</p>
 					<p>
@@ -150,7 +174,6 @@ if (member || dialog != null) {
 					</p>
 				</form>
 			</div>
-			<p>Mellonin tunnus on käytössä ainoastaan tässä palvelussa.</p>
 		</>}
 
 		<style>
@@ -171,7 +194,10 @@ if (member || dialog != null) {
 			sisältää henkilökohtaisia terveystietoja kuten allergiat. Järjestäjä saa tietää osallistujan iän tapahtuman
 			alkamispäivänä, mutta ei syntymäpäivää.
 		</p>
-		<p>Palvelu ei käytä kolmannen osapuolen evästeitä.</p>
+		<p>
+			Palvelu ei käytä kolmannen osapuolen evästeitä. Mellonin käyttäjätunnus on käytössä ainoastaan tässä
+			palvelussa.
+		</p>
 	</main>
 	<PageFooter />
 </body>

@@ -1,0 +1,75 @@
+---
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { getJwtPayload, getMemberIdFromCookie, getLoginCookieToken, getClearCookie } from "$/lib/auth";
+import { sql } from "$/lib/db";
+import type { Member } from "$/types/db";
+
+const cookie = Astro.request.headers.get('cookie')
+
+const loginToken = getLoginCookieToken(cookie)
+const memberId = getMemberIdFromCookie(cookie)
+
+if (memberId != null) {
+	const response = Astro.redirect('/profile')
+	if (loginToken) {
+		response.headers.set('Set-Cookie', getClearCookie('login'))
+	}
+	return response
+}
+
+const payload = loginToken && getJwtPayload(loginToken)
+if (!payload || typeof payload.email !== 'string') {
+	return Astro.redirect('/profile')
+}
+
+const member = (await sql<Member[]>`SELECT * FROM members WHERE email = ${payload.email}`).pop()
+if (!member) {
+	return Astro.redirect('/profile')
+}
+
+const dialog = new URL(Astro.request.url).searchParams.get('dialog')
+
+Astro.response.headers.set('Cache-Control', 'no-cache')
+Astro.response.headers.set('X-Robots-Tag', 'noindex')
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Kirjautuminen Melloniin" description="Yllätys! Tällä sivulla kirjaudutaan sisään." />
+
+<body>
+	<PageHeader />
+	<main id="main">
+		{dialog === 'login-failed' && <div>Kirjautuminen ei onnistunut.</div>}
+		<h1>Kirjautuminen</h1>
+		<form action="/profile/complete-login-by-email" method="POST">
+			<p>Olet kirjautumassa sisään sähköpostilinkillä. Vahvista kirjautuminen antamalla syntymäpäiväsi.</p>
+			<p>
+				<label>Syntymäpäivä muodossa VVVV-KK-PP: <input id="dob" name="dob" placeholder="VVVV-KK-PP" required
+						type="text" value="" pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])"
+						autocomplete="off" /></label><br />
+				<small>Esimerkiksi 2001-12-19</small>
+			</p>
+			<!--p>
+				Kirjautumisen kesto tässä selaimessa:<br />
+				<br />
+				<label><input type="radio" name="duration" value="session" required checked /> Kunnes suljen
+					selaimen</label> (julkinen kone)<br />
+				<label><input type="radio" name="duration" value="week" required /> Viikon</label><br />
+				<label><input type="radio" name="duration" value="month" required /> Kuukauden</label><br />
+				<label><input type="radio" name="duration" value="year" required /> Vuoden</label><br />
+				<br />
+				<small>Lyhemmät ajat ovat turvallisempia ja siten suositellumpia.</small>
+			</p-->
+			<p>
+				<button type="submit">Kirjaudu</button>
+			</p>
+		</form>
+	</main>
+	<PageFooter />
+</body>
+
+</html>

@@ -1,6 +1,6 @@
 import { marked } from 'marked'
 
-import { getMemberIdFromCookie, getClearCookie, getJwtTokenForEmail } from '$/lib/auth'
+import { getMemberIdFromCookie, getClearCookie, getJwtTokenForLogin } from '$/lib/auth'
 import { sql } from '$/lib/db'
 import { getMemberEmailField, sendMail } from '$/lib/email'
 
@@ -15,13 +15,13 @@ function getNewUserText(url: string, token: string) {
 	return `
 ## Tervehdys Mellonista!
 
-Sinulla ei ole ennestään tunnusta, joten pääset tekemään sen tästä linkistä: ${new URL(`/profile/add/${token}`, url)}
+Luo itsellesi tunnus käyttäen tätä linkkiä: ${new URL(`/profile/login/${token}`, url)}
 
 Linkki on voimassa noin kaksi tuntia.
 
 ---
 
-Jos et ole pyytänyt tekemistä Melloniin, niin voit jättää tämän viestin huomiotta.
+Jos et ole pyytänyt tunnuksen luontia Melloniin, niin voit jättää tämän viestin huomiotta.
 `
 }
 function getExistingUserText(url: string, token: string) {
@@ -52,7 +52,7 @@ export async function post({ request }: SSRRoute) {
 	}
 
 	const member = (await sql<Member[]>`SELECT * FROM members WHERE email = ${email}`).pop()
-	const token = getJwtTokenForEmail(email)
+	const token = getJwtTokenForLogin({ email })
 
 	const text = member ? getExistingUserText(request.url, token) : getNewUserText(request.url, token)
 	const subject = member ? 'Kirjautumislinkki Melloniin' : 'Linkki tunnuksen luontiin Melloniin'
