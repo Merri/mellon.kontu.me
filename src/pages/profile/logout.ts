@@ -11,7 +11,8 @@ export async function post({ request }: SSRRoute) {
 
 	if (payload != null) {
 		const response = Response.redirect(new URL(`/profile?dialog=logged-out`, request.url))
-		response.headers.set('Set-Cookie', getClearCookie('token'))
+		response.headers.append('Set-Cookie', getClearCookie('login'))
+		response.headers.append('Set-Cookie', getClearCookie('token'))
 		return response
 	}
 

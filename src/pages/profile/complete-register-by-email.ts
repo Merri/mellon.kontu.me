@@ -78,7 +78,6 @@ export async function post({ request }: SSRRoute) {
 	}
 
 	return new Promise<Response>((resolve) => {
-		getLogger()
 		try {
 			passwordHashAndSalt(passwordResult).hash(async function (error, hash) {
 				if (error || !hash) {

@@ -108,3 +108,16 @@ main {
 :where(h6) {
 	font-size: 1.125rem;
 }
+
+html:not([data-local-storage]) .depends-on-local-storage {
+	display: none;
+}
+
+html[data-local-storage~='useOpenDyslexic'] {
+	font-family: OpenDyslexic, 'Comic Sans MS', sans-serif;
+	font-size: 1.125rem;
+}
+
+:where(small) {
+	font-size: 87.5%;
+}

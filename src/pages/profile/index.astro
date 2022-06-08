@@ -177,11 +177,58 @@ if (member || dialog != null) {
 		</>}
 
 		<style>
-			p label input {
+			label {
+				cursor: pointer;
+			}
+
+			input:is([type="checkbox"], [type="radio"]) {
+				cursor: pointer;
+			}
+
+			p label input:not([type="checkbox"]):not([type="radio"]) {
 				display: block;
 				margin-bottom: -1.5rem;
 			}
 		</style>
+
+		<div class="depends-on-local-storage">
+			<hr />
+			<h2>Paikalliset asetukset</h2>
+			<p>Nämä asetukset vaikuttavat sivuston käyttökokemukseen ainoastaan tässä selaimessa.</p>
+			<p>
+				<label><input id="open-dyslexic" type="checkbox" /> Lukivaikeus? Ota käyttöön OpenDyslexic</label>
+			</p>
+		</div>
+		<script is:inline>
+			!function () {
+				try {
+					const checkbox = document.querySelector('#open-dyslexic');
+					if (checkbox && checkbox instanceof HTMLInputElement) {
+						checkbox.checked = localStorage.useOpenDyslexic != null;
+
+						checkbox.onclick = function () {
+							const useOpenDyslexic = localStorage.useOpenDyslexic == null;
+
+							if (!useOpenDyslexic) {
+								localStorage.removeItem('useOpenDyslexic');
+							} else {
+								localStorage.useOpenDyslexic = '';
+							}
+
+							checkbox.checked = useOpenDyslexic;
+
+							document.documentElement.dataset.localStorage = Object.keys(localStorage).join(' ');
+							if (useOpenDyslexic && !document.fonts.check('0 OpenDyslexic')) {
+								const link = document.createElement('link');
+								link.rel = 'stylesheet';
+								link.href = '/fonts/OpenDyslexic.css';
+								document.head.appendChild(link);
+							}
+						}
+					}
+				} catch (e) { }
+			}()
+		</script>
 
 		<hr />
 

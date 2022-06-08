@@ -60,3 +60,25 @@ const social = new URL('/assets/social.jpg', Astro.canonicalURL.origin).toString
 <!-- Annoyances -->
 <meta name="format-detection" content="telephone=no" />
 <!-- -->
+<script is:inline>
+	!function () {
+		try {
+			localStorage._ = '_';
+			localStorage.removeItem('_');
+
+			function update() {
+				document.documentElement.dataset.localStorage = Object.keys(localStorage).join(' ');
+			}
+
+			window.onstorage = function () {
+				requestAnimationFrame(update);
+			}
+
+			update();
+
+			if (localStorage.useOpenDyslexic != null && !document.fonts.check('0 OpenDyslexic')) {
+				document.write('<link rel="stylesheet" href="/fonts/OpenDyslexic.css" />')
+			}
+		} catch (e) { }
+	}()
+</script>

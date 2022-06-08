@@ -43,7 +43,6 @@ export async function post({ request }: SSRRoute) {
 	const hash = member.hash
 
 	return new Promise((resolve) => {
-		getLogger()
 		try {
 			passwordHashAndSalt(password).verifyAgainst(hash, async function (error, verified) {
 				if (error) {
