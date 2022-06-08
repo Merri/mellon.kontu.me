@@ -1,0 +1,193 @@
+---
+import { marked } from 'marked';
+import validatePhoneNumber from 'phone'
+
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { getMemberIdFromCookie } from "$/lib/auth";
+import { getLogger } from "$/lib/bugsnag";
+import { sql } from "$/lib/db";
+import { getMemberEmailField, sendMail } from '$/lib/email';
+import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
+import type { Member } from "$/types/db";
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+
+if (!member || !member.hash) {
+	return Astro.redirect('/profile')
+}
+
+const isSubmit = Astro.request.method.toUpperCase() === 'POST'
+
+const formData = isSubmit ? await Astro.request.formData() : null
+const _publicname = formData?.get('publicname')
+const _fullname = formData?.get('fullname')
+const _dob = formData?.get('dob')
+const _phone = formData?.get('phone')
+const _password = formData?.get('password')
+
+const publicname = typeof _publicname === 'string' ? _publicname.trim().slice(0, 255) : member.publicname
+const fullname = typeof _fullname === 'string' ? _fullname.trim().slice(0, 255) : member.fullname
+const dob = typeof _dob === 'string' ? _dob.trim() : (member.dob?.toISOString().slice(0, 10) || '')
+const phone = typeof _phone === 'string' ? _phone.trim().slice(0, 32) : member.phone
+const password = typeof _password === 'string' ? _password : ''
+
+const hash = member.hash
+
+const text = `
+## Tervehdys Mellonista!
+
+Tietojasi muutettiin juuri. Mikäli et ollut itse asialla, niin käy heti kirjautumassa ja vaihda salasanasi:
+${new URL('/profile', Astro.request.url)}
+
+Kaapattiinko tunnuksesi? Vastaa tähän viestiin.
+`
+
+type Errors = ('publicname' | 'fullname' | 'dob' | 'phone' | 'password')[]
+type DialogString = 'password-failure' | 'update-failure'
+
+const response: Response | DialogString | Errors = await new Promise((resolve) => {
+	if (!isSubmit) return resolve([])
+
+	const dobResult =
+		typeof dob === 'string' && /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/.test(dob)
+			? dob
+			: ''
+	const phoneResult = validatePhoneNumber(typeof phone === 'string' ? phone.slice(0, 32) : '')
+
+	const errors: Errors = []
+
+	if (!publicname) errors.push('publicname')
+	if (!fullname) errors.push('fullname')
+	if (!dobResult) errors.push('dob')
+	if (phone !== '' && !phoneResult.isValid) errors.push('phone')
+	if (!password) errors.push('password')
+
+	if (errors.length) return resolve(errors)
+
+	try {
+		passwordHashAndSalt(password).verifyAgainst(hash, async function (error, verified) {
+			if (error) {
+				getLogger().notify(error)
+				return resolve('password-failure')
+			}
+
+			if (!verified) {
+				errors.push('password')
+				return resolve(errors)
+			}
+
+			try {
+				const fields = {
+					publicname,
+					fullname,
+					dob: dobResult,
+					phone: phoneResult.phoneNumber
+				}
+
+				const updatedMember = (await sql<Member[]>`
+					UPDATE members
+					SET ${sql(fields)}
+					WHERE id = ${memberId}
+					RETURNING *
+				`).pop()
+
+				sendMail({
+					to: getMemberEmailField(updatedMember || member),
+					subject: 'Käyttäjätietojasi päivitettiin',
+					text,
+					html: marked.parse(text)
+				})
+			} catch (error) {
+				return resolve('update-failure')
+			}
+
+			const response = Astro.redirect(`/profile?dialog=update-completed`)
+			return resolve(response)
+		})
+	} catch (error) {
+		if (error instanceof Error) getLogger().notify(error)
+		return resolve('password-failure')
+	}
+})
+
+if (response instanceof Response) {
+	return response
+}
+
+const dialog = typeof response === 'string' ? response : ''
+const errors = new Set(Array.isArray(response) ? response : [])
+
+Astro.response.headers.set('Cache-Control', 'no-cache')
+Astro.response.headers.set('X-Robots-Tag', 'noindex')
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Tietojen päivittäminen" description="Käyttäjätietojen päivittäminen" />
+
+<body>
+	<PageHeader />
+
+	<main id="main">
+		{dialog === 'update-failure' && <div>Muutosten tallentamisessa tapahtui virhe.</div>}
+		{dialog === 'password-failure' && <div>Salasanan varmistamisessa tapahtui virhe.</div>}
+		{(errors.has('password') && errors.size === 1 && <div>Tarkista salasana.</div>) || (errors.size > 0 && <div>
+			Kentissä on virheitä. Tarkista korostetut kentät.</div>)}
+
+		<h1>Tietojen päivittäminen</h1>
+
+		<form action="/profile/update" method="POST">
+			<p class="form-field">
+				<label>Julkinen nimi / nimimerkki: <input id="publicname" aria-describedby="description-publicname"
+						name="publicname" placeholder="Nimi ilmoittautumislistalla" required type="text"
+						value={publicname} autocomplete="nickname" class={errors.has('publicname') ? 'error' :
+						undefined} aria-invalid={errors.has('publicname')} /></label>
+				<small id="description-publicname">Pakollinen. Ilmoittautumislistalla näkyvä nimi, kuten nimimerkki,
+					kutsumanimi tai oikea
+					etunimi.</small>
+			</p>
+			<p class="form-field">
+				<label>Etu- ja sukunimi: <input id="fullname" aria-describedby="description-fullname" name="fullname"
+						placeholder="Oikea nimesi" required type="text" value={fullname} autocomplete="name"
+						class={errors.has('fullname') ? 'error' : undefined}
+						aria-invalid={errors.has('fullname')} /></label>
+				<small id="description-fullname">Pakollinen. Tapahtuman järjestäjä saa tietää nimesi.</small>
+			</p>
+			<p class="form-field">
+				<label>Syntymäpäivä muotoa VVVV-KK-PP: <input id="dob" aria-describedby="description-dob" name="dob"
+						placeholder="2001-12-19" required type="text" value={dob}
+						pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])" autocomplete="off"
+						class={errors.has('dob') ? 'error' : undefined} aria-invalid={errors.has('dob')} /></label>
+				<small id="description-dob">Pakollinen. Esimerkki: 2001-12-19. Järjestäjä saa tietää ikäsi tapahtuman
+					alkaessa, mutta ei
+					syntymäpäivääsi.</small>
+			</p>
+			<p class="form-field">
+				<label>Puhelinnumero: <input id="phone" aria-describedby="description-phone" name="phone"
+						placeholder="+358401234567" type="tel" value={phone} autocomplete="tel"
+						class={errors.has('phone') ? 'error' : undefined} aria-invalid={errors.has('phone')} /></label>
+				<small id="description-phone">Esimerkiksi +358401234567. Puhelinnumero paljastetaan ainoastaan
+					tapahtuman
+					järjestäjälle.</small>
+			</p>
+			<p class="form-field">
+				<label>Salasana: <input id="password" aria-describedby="description-password" type="password"
+						name="password" required value={password} autocomplete="current-password"
+						class={errors.has('password') ? 'error' : undefined}
+						aria-invalid={errors.has('password')} /></label>
+				<small id="description-password">Vahvista tietojen päivitys antamalla nykyinen salasanasi.</small>
+			</p>
+			<p>
+				<button type="submit">Päivitä tiedot</button>
+			</p>
+		</form>
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>

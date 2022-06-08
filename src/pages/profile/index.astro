@@ -22,6 +22,7 @@ const showLoginCompleted = !!member && dialog === 'login-completed'
 const showRegisterCompleted = !!member && dialog === 'register-completed'
 const showInvalidLoginToken = !member && dialog === 'invalid-login-token'
 const showLoginFailed = !member && dialog === 'login-failed'
+const showUpdateCompleted = !member && dialog === 'update-completed'
 
 if (member || dialog != null) {
 	Astro.response.headers.set('Cache-Control', 'private, max-age=30')
@@ -42,6 +43,7 @@ if (member || dialog != null) {
 		{showInvalidLoginToken && <div>Virheellinen tai vanhentunut kirjautumistunniste.</div>}
 		{showRegisterCompleted && <div>Kiitos tunnuksen luomisesta! Voit nyt ilmoittautua miitteihin.</div>}
 		{showLoginCompleted && <div>Sinut on kirjattu sisään!</div>}
+		{showUpdateCompleted && <div>Tietojen päivitys onnistui!</div>}
 		{showLoggedOut && <div>Sinut on kirjattu ulos!</div>}
 		{showLoginLinkEmailSent && <div>Kirjautumislinkki on lähetetty sähköpostiisi ja sen pitäisi saapua pian. Viesti
 			saattaa viipyä matkalla mm. työpaikkojen sähköpostien turvatarkistuksien vuoksi. Jos viesti ei saavu
@@ -50,61 +52,62 @@ if (member || dialog != null) {
 		{showLoginInvalidEmail && <div>Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.
 		</div>}
 
+
 		<h1>Omat tiedot</h1>
 
 		{member ? <div>
-			<form action="/profile/logout" method="POST">
-				<p>
-					Tervehdys <code>{member.email}</code>!<br />
-					<button type="submit">Kirjaudu ulos</button>
-				</p>
+			<form action="/profile/logout" method="POST" style="align-items:center;display:flex;flex-wrap:wrap;gap:1rem">
+				<div style="flex-grow:1">Tervehdys <code>{member.email}</code>!</div>
+				<div>
+					<button type="submit" class="button-alt">Kirjaudu ulos</button>
+				</div>
 			</form>
 			<form action="/profile/update" method="POST">
 				<h2>Tunnuksen tiedot</h2>
-				<p>
+				<p class="form-field">
 					<label>Julkinen nimi / nimimerkki: <input id="publicname" name="publicname"
 							placeholder="Nimi ilmoittautumislistalla" required type="text" value={member.publicname}
-							autocomplete="nickname" /></label><br />
+							autocomplete="nickname" /></label>
 					<small>Pakollinen. Ilmoittautumislistalla näkyvä nimi, kuten nimimerkki, kutsumanimi tai oikea
 						etunimi.</small>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Etu- ja sukunimi: <input id="fullname" name="fullname" placeholder="Oikea nimesi" required
-							type="text" value={member.fullname} autocomplete="name" /></label><br />
+							type="text" value={member.fullname} autocomplete="name" /></label>
 					<small>Pakollinen. Tapahtuman järjestäjä saa tietää nimesi.</small>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Syntymäpäivä muotoa VVVV-KK-PP: <input id="dob" name="dob" placeholder="2001-12-19" required
 							type="text" value={member.dob?.toISOString().slice(0, 10) || '' }
 							pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])"
-							autocomplete="off" /></label><br />
+							autocomplete="off" /></label>
 					<small>Pakollinen. Esimerkki: 2001-12-19. Järjestäjä saa tietää ikäsi tapahtuman alkaessa, mutta ei
 						syntymäpäivääsi.</small>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Puhelinnumero: <input id="phone" name="phone" placeholder="+358401234567" type="tel"
-							value={member.phone} autocomplete="tel" /></label><br />
+							value={member.phone} autocomplete="tel" /></label>
 					<small>Esimerkiksi +358401234567. Puhelinnumero paljastetaan ainoastaan tapahtuman
 						järjestäjälle.</small>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Salasana: <input id="currentPassword" type="password" name="password" required
-							autocomplete="current-password" /></label><br />
+							autocomplete="current-password" /></label>
 					<small>Vahvista tietojen päivitys antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
 					<button type="submit">Päivitä tiedot</button>
 				</p>
 			</form>
-			<h2>Vaihda sähköpostiosoite</h2>
+			<h2>Vaihda sähköposti</h2>
 			<form action="/profile/update-email" method="POST">
-				<p>
+				<p class="form-field">
 					<label>Uusi sähköpostiosoite: <input id="newEmail" type="email" name="email" required
-							autocomplete="off" /></label><br />
+							autocomplete="off" /></label>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Salasana: <input id="newEmailPassword" type="password" name="password" required
-							autocomplete="current-password" /></label><br />
+							autocomplete="current-password" /></label>
 					<small>Vahvista sähköpostiosoitteen vaihto antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
@@ -113,21 +116,21 @@ if (member || dialog != null) {
 			</form>
 			<h2>Vaihda salasana</h2>
 			<form action="/profile/update-password" method="POST">
-				<p>
+				<p class="form-field">
 					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="oldPassword" required
-							autocomplete="current-password" /></label><br />
+							autocomplete="current-password" /></label>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Uusi salasana: <input id="newPassword" type="password" name="newPassword" required
-							autocomplete="new-password" /></label><br />
+							autocomplete="new-password" minlength={8} /></label>
 					<small>
 						Vinkki: hyvä salasana on pitkä helposti muistettava lause.<br />
 						Esimerkki: örkiltä putosi pöksyt ja nyt minun pitää silittää ne
 					</small>
 				</p>
-				<p>
+				<p class="form-field">
 					<label>Vahvista salasana: <input id="newConfirmPassword" type="password" name="confirmPassword"
-							required autocomplete="new-password" /></label><br />
+							required autocomplete="new-password" minlength={8} /></label>
 					<small>Kirjoita uusi salasana uudelleen.</small>
 				</p>
 				<p>
@@ -150,9 +153,9 @@ if (member || dialog != null) {
 				<form action="/profile/login-by-email" method="POST" style="flex:1 1 calc(50% - 1rem);min-width:20rem">
 					<h2>Kirjaudu linkillä</h2>
 					<p>Saat sähköpostiisi linkin, jolla pääset sisään.</p>
-					<p>
+					<p class="form-field">
 						<label>Sähköposti: <input id="email-by-link" type="email" name="email" required
-								autocomplete="email" /></label><br />
+								autocomplete="email" /></label>
 					</p>
 					<p>
 						<button type="submit">Lähetä linkki</button>
@@ -162,11 +165,13 @@ if (member || dialog != null) {
 					style="flex:1 1 calc(50% - 1rem);min-width:20rem">
 					<h2>Kirjaudu salasanalla</h2>
 					<p>Salasanalla pääset kirjautumaan sisään välittömästi.</p>
-					<p><label>Sähköposti: <input id="email-by-password" type="email" name="email" required
-								autocomplete="email" /><br /></label></p>
-					<p>
+					<p class="form-field">
+						<label>Sähköposti: <input id="email-by-password" type="email" name="email" required
+								autocomplete="email" /></label>
+					</p>
+					<p class="form-field">
 						<label>Salasana: <input id="password" type="password" name="password" minlength={8} required
-								autocomplete="current-password" /><br /></label>
+								autocomplete="current-password" /></label>
 						<small>Unohditko salasanasi? Kirjaudu sisään sähköpostiosoitteella!</small>
 					</p>
 					<p>
@@ -183,11 +188,6 @@ if (member || dialog != null) {
 
 			input:is([type="checkbox"], [type="radio"]) {
 				cursor: pointer;
-			}
-
-			p label input:not([type="checkbox"]):not([type="radio"]) {
-				display: block;
-				margin-bottom: -1.5rem;
 			}
 		</style>
 
@@ -218,7 +218,7 @@ if (member || dialog != null) {
 							checkbox.checked = useOpenDyslexic;
 
 							document.documentElement.dataset.localStorage = Object.keys(localStorage).join(' ');
-							if (useOpenDyslexic && !document.querySelector('link[href*="OpenDyslexic.css"]')) {
+							if (useOpenDyslexic && !document.querySelector('link[href$="/OpenDyslexic.css"]')) {
 								const link = document.createElement('link');
 								link.rel = 'stylesheet';
 								link.href = '/fonts/OpenDyslexic.css';
