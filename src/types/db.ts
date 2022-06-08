@@ -35,6 +35,17 @@ export interface Member {
 	dob: Date | null
 }
 
+export interface Organization {
+	id: number
+	name: string
+	shortDescription: string | null
+	url: string | null
+	intro: string | null
+	history: string | null
+	/** Organization owner */
+	memberId: number
+}
+
 export interface Place {
 	id: number
 	name: string
@@ -65,4 +76,5 @@ export interface Registration {
 	bankReference: string
 	paid: Date | null
 	cancelled: Date | null
+	isOrganizer: boolean
 }

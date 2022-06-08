@@ -1,114 +1,76 @@
 import crypto from 'crypto'
 
-type Callback = (error: Error | string | null, hash?: string) => void
+type HashCallback = (error: Error | null, hash?: string) => void
+type VerifyCallback = (error: Error | null, verified?: boolean) => void
 
-function getFunctionParameters(fn: typeof crypto.pbkdf2) {
-	const args: any[] = []
-	const FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m
-	const FN_ARG_SPLIT = /,/
-	const FN_ARG = /^\s*(_?)(.+?)\1\s*$/
-	const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/gm
+interface CalcHashOptions {
+	digest?: string
+	iterations: number
+	password: string
+	salt: Buffer
+}
 
-	if (typeof fn === 'function') {
-		const fnText = fn.toString().replace(STRIP_COMMENTS, '')
-		const argDecl = fnText.match(FN_ARGS)
+interface HashOptions {
+	digest?: string
+	salt?: string | Buffer
+}
 
-		argDecl?.[1].split(FN_ARG_SPLIT).forEach(function (arg) {
-			arg.replace(FN_ARG, function (_all, _underscore, name) {
-				args.push(name)
-				return ''
-			})
-		})
-
-		return args
-	} else {
-		return null
-	}
+function calcHash(callback: HashCallback, { digest = 'sha512', iterations, password, salt }: CalcHashOptions) {
+	crypto.pbkdf2(password, salt, iterations, 64, digest, function (error, key) {
+		if (error) return callback(error)
+		callback(null, `pbkdf2$${iterations}$${key.toString('hex')}$${salt.toString('hex')}$${digest}`)
+	})
 }
 
 /**
- * Ported to TypeScript from happn-password-hash-and-salt
+ * Modernized and ported to TypeScript from `happn-password-hash-and-salt`. Dropped support for old versions of crypto.
  *
  * @see https://github.com/happner/password-hash-and-salt
- * */
+ */
 export function passwordHashAndSalt(password: string, iterations = 10000) {
-	function calcHash(callback: Callback, salt: Buffer, digest = 'sha512') {
-		const params = getFunctionParameters(crypto.pbkdf2) || []
-		const hasDigest = params.length > 5
-
-		if (!hasDigest) {
-			digest = 'sha1'
-			// @ts-ignore
-			crypto.pbkdf2(password, salt, iterations, 64, function (err, key) {
-				if (err) return callback(err)
-				callback(null, `pbkdf2$${iterations}$${key.toString('hex')}$${salt.toString('hex')}$${digest}`)
-			})
-		} else {
-			crypto.pbkdf2(password, salt, iterations, 64, digest, function (err, key) {
-				if (err) return callback(err)
-				callback(null, `pbkdf2$${iterations}$${key.toString('hex')}$${salt.toString('hex')}$${digest}`)
-			})
-		}
-	}
-
 	return {
-		hash: function (callback: Callback, options: { digest?: string; salt?: string | Buffer } = {}) {
-			if (!password) return callback('No password provided')
+		hash: function (callback: HashCallback, { digest, salt: rawSalt }: HashOptions = {}) {
+			if (!password) return callback(new Error('No password provided'))
 
-			if (!options.salt) {
-				crypto.randomBytes(64, function (err, gensalt) {
-					if (err) return callback(err)
-					calcHash(callback, gensalt, options.digest)
-				})
-			} else {
-				calcHash(
-					callback,
-					typeof options.salt === 'string' ? Buffer.from(options.salt, 'hex') : options.salt,
-					options.digest
-				)
+			if (rawSalt) {
+				const salt = typeof rawSalt === 'string' ? Buffer.from(rawSalt, 'hex') : rawSalt
+				return calcHash(callback, { digest, iterations, password, salt })
 			}
+
+			crypto.randomBytes(64, function (error, salt) {
+				if (error) return callback(error)
+				calcHash(callback, { digest, iterations, password, salt })
+			})
 		},
 
-		verifyAgainst: function (
-			hashedPassword: string,
-			callback: (error: string | Error | null, verified?: boolean) => void
-		) {
+		verifyAgainst: function (hashedPassword: string, callback: VerifyCallback) {
 			if (!hashedPassword || !password) {
 				return callback(null, false)
 			}
 
-			const key = hashedPassword.split('$')
+			const [algorithm, iterations, key, salt, digest] = hashedPassword.split('$')
 
-			if (key.length < 4 || !key[2] || !key[3]) {
-				return callback('Hash not formatted correctly')
+			if (algorithm !== 'pbkdf2') {
+				return callback(new Error(`Wrong algorithm: expected pbkdf2, got "${algorithm}"`))
 			}
 
-			if (key[0] !== 'pbkdf2') {
-				return callback('Wrong algorithm')
+			if (!iterations || !key || !salt) {
+				return callback(new Error(`Hash not formatted correctly`))
 			}
 
-			iterations = parseInt(key[1])
-			if (!iterations) {
-				return callback('Iterations not stored')
+			if (!parseInt(iterations)) {
+				return callback(new Error(`Iterations not stored`))
 			}
 
-			// backward compatible with previous passwords
-			let hashedPasswordDigest = 'sha1'
-			// decouple in case we need to add anything
-			let checkAgainst = hashedPassword.toString()
-
-			if (key[4]) {
-				hashedPasswordDigest = key[4]
-			} else {
-				checkAgainst += '$sha1'
-			}
+			// Backwards compatibility with old passwords that did not have digest in their payload
+			const hash = `${hashedPassword}${!digest ? '$sha1' : ''}`
 
 			this.hash(
-				function (error: string | Error | null, newHash?: string) {
+				function (error: Error | null, newHash?: string) {
 					if (error) return callback(error)
-					callback(null, newHash === checkAgainst)
+					callback(null, newHash === hash)
 				},
-				{ digest: hashedPasswordDigest, salt: key[3] }
+				{ digest: digest || 'sha1', salt }
 			)
 		},
 	}
