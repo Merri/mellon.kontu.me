@@ -218,7 +218,7 @@ if (member || dialog != null) {
 							checkbox.checked = useOpenDyslexic;
 
 							document.documentElement.dataset.localStorage = Object.keys(localStorage).join(' ');
-							if (useOpenDyslexic && !document.fonts.check('0 OpenDyslexic')) {
+							if (useOpenDyslexic && !document.querySelector('link[href*="OpenDyslexic.css"]')) {
 								const link = document.createElement('link');
 								link.rel = 'stylesheet';
 								link.href = '/fonts/OpenDyslexic.css';

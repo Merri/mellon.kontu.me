@@ -63,8 +63,7 @@ const social = new URL('/assets/social.jpg', Astro.canonicalURL.origin).toString
 <script is:inline>
 	!function () {
 		try {
-			localStorage._ = '_';
-			localStorage.removeItem('_');
+			localStorage.removeItem(localStorage._ = '_');
 
 			function update() {
 				document.documentElement.dataset.localStorage = Object.keys(localStorage).join(' ');
@@ -76,7 +75,7 @@ const social = new URL('/assets/social.jpg', Astro.canonicalURL.origin).toString
 
 			update();
 
-			if (localStorage.useOpenDyslexic != null && !document.fonts.check('0 OpenDyslexic')) {
+			if (localStorage.useOpenDyslexic != null) {
 				document.write('<link rel="stylesheet" href="/fonts/OpenDyslexic.css" />')
 			}
 		} catch (e) { }
