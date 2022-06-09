@@ -1,4 +1,4 @@
-import dateFnsTz from 'date-fns-tz'
+import * as dateFnsTz from 'date-fns-tz'
 import locale from 'date-fns/locale/fi/index.js'
 
 import type { Meetup } from '$/types/db'
@@ -9,8 +9,8 @@ const tz = 'Europe/Helsinki'
 
 const formatOptions = { locale, timeZone: tz }
 
-export function getYmdUTC() {
-	return format(new Date(), 'yyyy-MM-dd')
+export function getYmdUTC(now?: Date) {
+	return format(now ?? new Date(), 'yyyy-MM-dd')
 }
 
 export function meetupToZonedTime(meetup: Meetup) {

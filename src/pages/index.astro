@@ -9,7 +9,9 @@ import { sql } from "$/lib/db";
 import { getTextMeetupDateRange, getTextRegistrationClose, getTextRegistrationOpen } from '$/lib/meetup';
 import type { Meetup, Organization, Place } from "$/types/db";
 
-const upcomingMeetups = (await sql<Meetup[]>`SELECT * FROM meetups WHERE meetups.end >= ${getYmdUTC()}`).map(meetupToZonedTime)
+const now = new Date()
+
+const upcomingMeetups = (await sql<Meetup[]>`SELECT * FROM meetups WHERE "end" >= ${getYmdUTC(now)} ORDER BY "end" desc, "begin" desc`).map(meetupToZonedTime)
 
 const placeIds = new Set(upcomingMeetups.map(({ placeId }) => placeId))
 
@@ -26,8 +28,6 @@ const organizationMap = new Map<number, Organization>()
 organizations.forEach(organization => {
 	organizationMap.set(organization.id, organization)
 })
-
-const now = new Date()
 
 ---
 
@@ -60,16 +60,19 @@ const now = new Date()
 					<a href={`/meetups/view/${meetup.id}`}><strong>{meetup.title}</strong></a>
 				</dt>
 				<dd>
-					{getTextMeetupDateRange(meetup)}<br />
 					<span>{placeMap.get(meetup.placeId)?.name}</span><br />
+					{getTextMeetupDateRange(meetup)}<br />
 					{isOpen && <p>
 						<a href={`/meetups/register/${meetup.id}`} class="button">
 							Ilmoittaudu!
 							<Icon href="/icons/duotone-calendar.svg" />
 						</a>
 					</p>}
-					{(willOpen && <span>Ilmoittautuminen alkaa {willOpen}</span>) || (willClose &&
-					<span>Ilmoittautuminen sulkeutuu {willClose}</span>) || <span>Ilmoittautuminen päättynyt</span>}
+					<p>
+						{(willOpen && <small>Ilmoittautuminen alkaa {willOpen}</small>) || (willClose &&
+						<small>Ilmoittautuminen sulkeutuu {willClose}</small>) || <small>Ilmoittautuminen
+							sulkeutunut</small>}
+					</p>
 				</dd>
 			</div>
 			})}
@@ -81,27 +84,37 @@ const now = new Date()
 			display: flex;
 			flex-wrap: wrap;
 			gap: 1rem;
+			justify-content: space-evenly;
 			margin: 1rem;
+			text-align: center;
 		}
 
 		dl>div {
 			border: thin solid var(--border-color);
 			border-radius: 1rem;
-			padding: 1rem;
+			max-width: 24rem;
+			padding: 0.5rem 1rem 0;
+		}
+
+		dl>div:only-child {
+			margin-right: auto;
 		}
 
 		dt {
+			border-bottom: thin solid var(--border-color);
 			font-size: 1.25rem;
+			margin: 0 -1rem;
+			padding: 0 1rem 1rem;
 		}
 
-		dt > small {
+		dt>small {
 			font-size: 0.875rem;
 			font-weight: bold;
 		}
 
 		dd {
 			margin: 0;
-			padding: 0.25rem;
+			padding: 1rem 0 0;
 		}
 	</style>
 
