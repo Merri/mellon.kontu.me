@@ -1,0 +1,25 @@
+---
+import { getJwtPayload, getMemberIdFromCookie } from "$/lib/auth";
+import { sql } from "$/lib/db";
+import type { Member } from "$/types/db";
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+
+const payload = typeof Astro.params.token === 'string' && getJwtPayload(Astro.params.token)
+if (!payload || typeof payload.email !== 'string' || typeof payload.newEmail !== 'string') {
+	return Astro.redirect('/profile?dialog=invalid-login-token')
+}
+
+const member = memberId != null ? (await sql<Member[]>`
+	UPDATE members
+	SET email = ${payload.newEmail}
+	WHERE email = ${payload.email} AND id = ${memberId}
+	RETURNING *
+`).pop() : undefined
+
+const response = Astro.redirect(`/profile?dialog=${member ? 'email-update-completed' : 'email-update-failed'}`)
+response.headers.set('Cache-Control', 'no-cache')
+return response
+
+---
+

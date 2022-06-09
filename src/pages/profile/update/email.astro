@@ -1,0 +1,152 @@
+---
+import { marked } from 'marked';
+
+import BaseHead from "$/components/BaseHead.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { getJwtTokenForLogin, getMemberIdFromCookie } from "$/lib/auth";
+import { getLogger } from "$/lib/bugsnag";
+import { sql } from "$/lib/db";
+import { getMemberEmailField, sendMail } from '$/lib/email';
+import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
+import type { Member } from "$/types/db";
+import Icon from '$/components/Icon.astro';
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+
+if (!member || !member.hash) {
+	return Astro.redirect('/profile')
+}
+
+const isSubmit = Astro.request.method.toUpperCase() === 'POST'
+
+const formData = isSubmit ? await Astro.request.formData() : null
+const _email = formData?.get('email')
+const _password = formData?.get('password')
+
+const email = typeof _email === 'string' ? _email.trim().slice(0, 511) : ''
+const password = typeof _password === 'string' ? _password : ''
+
+const hash = member.hash
+
+const oldEmailText = `
+## Tervehdys Mellonista!
+
+Tämä on vahvistusviesti, että olet päivittämässä sähköpostiosoitettasi uuteen. Saat hetken kuluttua vahvistuslinkin
+uuteen osoitteeseen.
+
+Mikäli et ollut itse asialla, niin käy heti kirjautumassa ja vaihda salasanasi:
+${new URL('/profile', Astro.request.url)}
+
+Kaapattiinko tunnuksesi? Vastaa tähän viestiin.
+`
+
+const getNewmailText = (token: string) => `
+## Tervehdys Mellonista!
+
+Vahvista sähköpostisoitteen vaihto tällä linkillä: ${new URL(`/profile/update/email/${token}`, Astro.request.url)}
+
+Linkki on voimassa noin kaksi tuntia.
+`
+
+type Errors = ('email' | 'password')[]
+type DialogString = 'success' | 'password-failure'
+
+const response: DialogString | Errors = await new Promise((resolve) => {
+	if (!isSubmit) return resolve([])
+
+	const errors: Errors = []
+
+	if (!email || !email.includes('@') || email === member.email) errors.push('email')
+	if (!password) errors.push('password')
+
+	if (errors.length) return resolve(errors)
+
+	try {
+		passwordHashAndSalt(password).verifyAgainst(hash, async function (error, verified) {
+			if (error) {
+				getLogger().notify(error)
+				return resolve('password-failure')
+			}
+
+			if (!verified) {
+				errors.push('password')
+				return resolve(errors)
+			}
+
+			sendMail({
+				to: getMemberEmailField(member),
+				subject: 'Sähköpostiosoitteen vaihto',
+				text: oldEmailText,
+				html: marked.parse(oldEmailText)
+			})
+
+			setTimeout(() => {
+				const token = getJwtTokenForLogin({ email: member.email, newEmail: email })
+				const text = getNewmailText(token)
+
+				sendMail({
+					to: getMemberEmailField({ ...member, email }),
+					subject: 'Vahvista sähköpostiosoitteen vaihto',
+					text,
+					html: marked.parse(text)
+				})
+			}, 60000)
+
+			return resolve('success')
+		})
+	} catch (error) {
+		if (error instanceof Error) getLogger().notify(error)
+		return resolve('password-failure')
+	}
+})
+
+const dialog = typeof response === 'string' ? response : ''
+const errors = new Set(Array.isArray(response) ? response : [])
+
+Astro.response.headers.set('Cache-Control', 'no-cache')
+Astro.response.headers.set('X-Robots-Tag', 'noindex')
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Sähköpostin päivittäminen" description="Sähköpostiosoitteen päivittäminen" />
+
+<body>
+	<PageHeader />
+
+	<main id="main">
+		{dialog === 'password-failure' && <div>Salasanan varmistamisessa tapahtui virhe.</div>}
+		{(errors.has('password') && errors.size === 1 && <div>Tarkista salasana.</div>) || (errors.size > 0 && <div>
+			Tarkista sähköposti.</div>)}
+		<h1>Sähköpostiosoitteen päivittäminen</h1>
+		{dialog !== 'success' ? <form action="/profile/update/email" method="POST">
+			<p class="form-field">
+				<label>Uusi sähköpostiosoite: <input id="email" type="email" name="email" required autocomplete="off"
+						value={email} class={errors.has('email') ? 'error' : undefined}
+						aria-invalid={errors.has('email')} /></label>
+			</p>
+			<p class="form-field">
+				<label>Salasana: <input id="password" type="password" name="password" required
+						autocomplete="current-password" value={password} class={errors.has('password') ? 'error' :
+						undefined} aria-invalid={errors.has('password')} /></label>
+				<small>Vahvista sähköpostiosoitteen vaihto antamalla nykyinen salasanasi.</small>
+			</p>
+			<p>
+				<button type="submit">
+					<Icon href="/icons/duotone-save.svg" />
+					Päivitä sähköposti
+				</button>
+			</p>
+		</form> : <>
+			<p>Saat hetken kuluttua vahvistuslinkin sähköpostiisi.</p>
+			<p><a href="/profile">Takaisin profiilisivulle</a></p>
+		</>}
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>

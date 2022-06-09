@@ -5,6 +5,8 @@ import JWT from 'jsonwebtoken'
 import { getLogger } from '$/lib/bugsnag'
 import type { Member } from '$/types/db'
 
+/** @todo Methods in this file need to be named better to match their actual use. */
+
 /** Main token for authentication. */
 export function getJwtToken(member: Member) {
 	return JWT.sign({ id: member.id, duration: 'year' }, import.meta.env.JWT_SECRET, {

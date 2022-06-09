@@ -24,6 +24,7 @@ const showRegisterCompleted = !!member && dialog === 'register-completed'
 const showInvalidLoginToken = !member && dialog === 'invalid-login-token'
 const showLoginFailed = !member && dialog === 'login-failed'
 const showUpdateCompleted = !member && dialog === 'update-completed'
+const showEmailUpdateCompleted = !!member && dialog === 'email-update-completed'
 
 if (member || dialog != null) {
 	Astro.response.headers.set('Cache-Control', 'private, max-age=30')
@@ -52,17 +53,20 @@ if (member || dialog != null) {
 		{showLoginInvalidCredentials && <div>Kirjautuminen ei onnistunut: väärä salasana tai sähköpostiosoite.</div>}
 		{showLoginInvalidEmail && <div>Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.
 		</div>}
-
+		{showEmailUpdateCompleted && <div>Sähköpostiosoitteesi on nyt vaihdettu!</div>}
+		{dialog === 'email-update-failed' && (member ? <div>Valitettavasti sähköpostiosoitteesi vaihtaminen ei
+			onnistunut.</div> : <div>Sähköpostiosoitteen vaihtaminen ei onnistunut, koska et ole kirjautunut.</div>)}
 
 		<h1>Omat tiedot</h1>
 
 		{member ? <div>
-			<form action="/profile/logout" method="POST" style="align-items:center;display:flex;flex-wrap:wrap;gap:1rem">
+			<form action="/profile/logout" method="POST"
+				style="align-items:center;display:flex;flex-wrap:wrap;gap:1rem">
 				<div style="flex-grow:1">Tervehdys <code>{member.email}</code>!</div>
 				<div>
 					<button type="submit" class="button-alt">
-						<Icon href="/icons/duotone-logout.svg" />
 						Kirjaudu ulos
+						<Icon href="/icons/duotone-logout.svg" />
 					</button>
 				</div>
 			</form>
@@ -107,7 +111,7 @@ if (member || dialog != null) {
 				</p>
 			</form>
 			<h2>Vaihda sähköposti</h2>
-			<form action="/profile/update-email" method="POST">
+			<form action="/profile/update/email" method="POST">
 				<p class="form-field">
 					<label>Uusi sähköpostiosoite: <input id="newEmail" type="email" name="email" required
 							autocomplete="off" /></label>
@@ -125,7 +129,7 @@ if (member || dialog != null) {
 				</p>
 			</form>
 			<h2>Vaihda salasana</h2>
-			<form action="/profile/update-password" method="POST">
+			<form action="/profile/update/password" method="POST">
 				<p class="form-field">
 					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="oldPassword" required
 							autocomplete="current-password" /></label>

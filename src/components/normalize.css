@@ -25,6 +25,7 @@
 }
 
 :is(button, .button) {
+	--icon-color-alt: rgba(32, 96, 48, 0.175);
 	align-items: center;
 	background: var(--button-color);
 	background-image: linear-gradient(
@@ -68,10 +69,12 @@
 }
 
 :is(button, .button):hover {
+	--icon-color-alt: rgba(32, 96, 48, 0.25);
 	filter: brightness(1.0625);
 }
 
 :is(button, .button):active {
+	--icon-color-alt: rgba(32, 96, 48, 0.375);
 	box-shadow: -0.125rem -0.125rem 0.25rem rgba(0, 0, 0, 0.125), inset 1px 1px 2px white,
 		inset -1px -1px 2px rgba(0, 0, 0, 0.25);
 	filter: brightness(0.875);
