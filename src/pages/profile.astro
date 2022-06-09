@@ -131,7 +131,7 @@ if (member || dialog != null) {
 			<h2>Vaihda salasana</h2>
 			<form action="/profile/update/password" method="POST">
 				<p class="form-field">
-					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="oldPassword" required
+					<label>Nykyinen salasana: <input id="newOldPassword" type="password" name="password" required
 							autocomplete="current-password" /></label>
 				</p>
 				<p class="form-field">
@@ -155,7 +155,7 @@ if (member || dialog != null) {
 				</p>
 			</form>
 			<h2>Unohtunut salasana</h2>
-			<p>Unohditko salasanasi? Pyydä salasananvaihtolinkki sähköpostiisi!</p>
+			<p>Unohditko salasanasi? Pyydä vaihtolinkki sähköpostiisi!</p>
 			<form action="/profile/forgot-password" method="POST">
 				<p>
 					<button type="submit">
@@ -195,7 +195,7 @@ if (member || dialog != null) {
 					<p class="form-field">
 						<label>Salasana: <input id="password" type="password" name="password" minlength={8} required
 								autocomplete="current-password" /></label>
-						<small>Unohditko salasanasi? Kirjaudu sisään sähköpostiosoitteella!</small>
+						<small>Unohditko salasanasi? Kirjaudu linkillä sisään!</small>
 					</p>
 					<p>
 						<button type="submit">

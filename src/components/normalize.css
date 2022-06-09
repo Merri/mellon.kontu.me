@@ -133,7 +133,7 @@ html:not([data-local-storage]) .depends-on-local-storage {
 }
 
 html[data-local-storage~='useOpenDyslexic'] {
-	font-family: OpenDyslexic, 'Comic Sans MS', sans-serif;
+	font-family: OpenDyslexic, OpenDyslexic3, 'Comic Sans MS', sans-serif;
 	font-size: 1.125rem;
 }
 
