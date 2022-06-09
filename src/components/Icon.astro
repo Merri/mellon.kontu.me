@@ -1,0 +1,18 @@
+---
+
+export interface Props {
+	color?: string
+	href: string
+	size?: number
+	title?: string
+}
+
+const { color, href, size = 1.5, title } = Astro.props
+
+---
+
+<svg aria-hidden={!title || undefined} class="icon" width={size * 16} height={size * 16} style={color &&
+	`--icon-color-alt:${color}`}>
+	{title && <title>${title}</title>}
+	<use href={`${href}#icon`} />
+</svg>

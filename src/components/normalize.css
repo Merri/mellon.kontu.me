@@ -10,6 +10,8 @@
 	--error-color: #ba4d4f;
 	--error-color-alt: #d5757a;
 	--focus-color: #5d81be;
+	--icon-color: currentColor;
+	--icon-color-alt: transparent;
 	--link-color: #4f8c31;
 }
 
@@ -49,6 +51,12 @@
 	padding: 0.5rem 1.5rem;
 	text-shadow: -1px -1px 2px rgba(255, 255, 255, 0.75), 1px 1px 1px rgba(0, 0, 0, 0.0625);
 	transform: translateY(0);
+}
+
+:is(button, .button) svg {
+	filter: drop-shadow(-1px -1px 2px rgba(255, 255, 255, 0.75)) drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.0625));
+	width: 2rem;
+	height: auto;
 }
 
 .button-alt {

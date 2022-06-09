@@ -1,5 +1,6 @@
 ---
 import BaseHead from "$/components/BaseHead.astro";
+import Icon from "$/components/Icon.astro";
 import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
 import { getClearCookie, getMemberIdFromCookie } from "$/lib/auth";
@@ -59,7 +60,10 @@ if (member || dialog != null) {
 			<form action="/profile/logout" method="POST" style="align-items:center;display:flex;flex-wrap:wrap;gap:1rem">
 				<div style="flex-grow:1">Tervehdys <code>{member.email}</code>!</div>
 				<div>
-					<button type="submit" class="button-alt">Kirjaudu ulos</button>
+					<button type="submit" class="button-alt">
+						<Icon href="/icons/duotone-logout.svg" />
+						Kirjaudu ulos
+					</button>
 				</div>
 			</form>
 			<form action="/profile/update" method="POST">
@@ -96,7 +100,10 @@ if (member || dialog != null) {
 					<small>Vahvista tietojen päivitys antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
-					<button type="submit">Päivitä tiedot</button>
+					<button type="submit">
+						<Icon href="/icons/duotone-save.svg" />
+						Päivitä tiedot
+					</button>
 				</p>
 			</form>
 			<h2>Vaihda sähköposti</h2>
@@ -111,7 +118,10 @@ if (member || dialog != null) {
 					<small>Vahvista sähköpostiosoitteen vaihto antamalla nykyinen salasanasi.</small>
 				</p>
 				<p>
-					<button type="submit">Päivitä sähköposti</button>
+					<button type="submit">
+						<Icon href="/icons/duotone-save.svg" />
+						Päivitä sähköposti
+					</button>
 				</p>
 			</form>
 			<h2>Vaihda salasana</h2>
@@ -134,14 +144,20 @@ if (member || dialog != null) {
 					<small>Kirjoita uusi salasana uudelleen.</small>
 				</p>
 				<p>
-					<button type="submit">Päivitä salasana</button>
+					<button type="submit">
+						<Icon href="/icons/duotone-save.svg" />
+						Päivitä salasana
+					</button>
 				</p>
 			</form>
 			<h2>Unohtunut salasana</h2>
 			<p>Unohditko salasanasi? Pyydä salasananvaihtolinkki sähköpostiisi!</p>
 			<form action="/profile/forgot-password" method="POST">
 				<p>
-					<button type="submit">Lähetä vaihtolinkki</button>
+					<button type="submit">
+						<Icon href="/icons/duotone-mail.svg" />
+						Lähetä vaihtolinkki
+					</button>
 				</p>
 			</form>
 			<h2>Tunnuksen poistaminen</h2>
@@ -158,7 +174,10 @@ if (member || dialog != null) {
 								autocomplete="email" /></label>
 					</p>
 					<p>
-						<button type="submit">Lähetä linkki</button>
+						<button type="submit">
+							<Icon href="/icons/duotone-mail.svg" />
+							Lähetä linkki
+						</button>
 					</p>
 				</form>
 				<form action="/profile/login-by-password" method="POST"
@@ -175,7 +194,10 @@ if (member || dialog != null) {
 						<small>Unohditko salasanasi? Kirjaudu sisään sähköpostiosoitteella!</small>
 					</p>
 					<p>
-						<button type="submit">Kirjaudu</button>
+						<button type="submit">
+							<Icon href="/icons/duotone-login.svg" />
+							Kirjaudu
+						</button>
 					</p>
 				</form>
 			</div>
