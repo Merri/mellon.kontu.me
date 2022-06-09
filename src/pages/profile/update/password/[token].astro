@@ -1,0 +1,133 @@
+---
+import BaseHead from "$/components/BaseHead.astro";
+import Icon from "$/components/Icon.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import { getJwtPayload, getMemberIdFromCookie } from "$/lib/auth";
+import { getLogger } from "$/lib/bugsnag";
+import { sql } from "$/lib/db";
+import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
+import type { Member } from "$/types/db";
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+
+if (!member) {
+	return Astro.redirect('/profile')
+}
+
+const hash = member.hash || ''
+
+const payload = typeof Astro.params.token === 'string' && getJwtPayload(Astro.params.token)
+
+if (!payload || typeof payload.email !== 'string' || payload.hash !== hash) {
+	const response = Astro.redirect('/profile?dialog=invalid-login-token')
+	response.headers.set('Cache-Control', 'no-cache')
+	return response
+}
+
+const isSubmit = Astro.request.method.toUpperCase() === 'POST'
+
+const formData = isSubmit ? await Astro.request.formData() : null
+const _newPassword = formData?.get('newPassword')
+const _confirmPassword = formData?.get('confirmPassword')
+
+const newPassword = typeof _newPassword === 'string' ? _newPassword : ''
+const confirmPassword = typeof _confirmPassword === 'string' ? _confirmPassword : ''
+
+type Errors = ('newPassword')[]
+type DialogString = 'success' | 'database-failure' | 'password-failure'
+
+const response: DialogString | Errors = await new Promise((resolve) => {
+	if (!isSubmit) return resolve([])
+
+	const errors: Errors = []
+
+	if (!newPassword || newPassword !== confirmPassword) errors.push('newPassword')
+
+	if (errors.length) return resolve(errors)
+
+	try {
+		passwordHashAndSalt(newPassword).hash(async function (error, newHash) {
+			if (error || !newHash) {
+				getLogger().notify(error || new Error(`Password hash failed: ${newHash}`))
+				return resolve('password-failure')
+			}
+
+			const updatedMember = (await sql<Member[]>`
+				UPDATE members
+				SET hash = ${newHash}
+				WHERE id = ${memberId}
+				RETURNING *
+			`).pop()
+
+			if (updatedMember) {
+				return resolve('success')
+			} else {
+				return resolve('database-failure')
+			}
+		})
+	} catch (error) {
+		if (error instanceof Error) getLogger().notify(error)
+		return resolve('password-failure')
+	}
+})
+
+const dialog = typeof response === 'string' ? response : ''
+const errors = new Set(Array.isArray(response) ? response : [])
+
+Astro.response.headers.set('Cache-Control', 'no-cache')
+Astro.response.headers.set('X-Robots-Tag', 'noindex')
+
+---
+
+<html lang="fi">
+
+<BaseHead title="Salasanan asettaminen" description="Salasana asetetaan tällä sivulla" />
+
+<body>
+	<PageHeader />
+
+	<main id="main">
+		{dialog === 'database-failure' && <div>Salasanan tallentamisessa tapahtui virhe. Salasana ei mahdollisesti
+			vaihtunut.</div>}
+		{errors.has('newPassword') && <div>Uudet salasanat eivät täsmää.</div>}
+		<h1>Salasanan asettaminen</h1>
+		{dialog !== 'success' ? <form action="" method="POST">
+			<p class="form-field">
+				<label>Uusi salasana: <input id="newPassword" type="password" name="newPassword" required
+						autocomplete="new-password" minlength={8} value={newPassword} class={errors.has('newPassword')
+						? 'error' : undefined} aria-invalid={errors.has('newPassword')} /></label>
+				<small>
+					Vinkki: hyvä salasana on pitkä helposti muistettava lause.<br />
+					Esimerkki: örkiltä putosi pöksyt ja nyt minun pitää silittää ne
+				</small>
+			</p>
+			<p class="form-field">
+				<label>Vahvista salasana: <input id="confirmPassword" type="password" name="confirmPassword" required
+						autocomplete="new-password" minlength={8} value={confirmPassword}
+						class={errors.has('newPassword') ? 'error' : undefined}
+						aria-invalid={errors.has('newPassword')} /></label>
+				<small>Kirjoita uusi salasana uudelleen.</small>
+			</p>
+			<p>
+				<button type="submit">
+					<Icon href="/icons/duotone-save.svg" />
+					Aseta salasana
+				</button>
+			</p>
+		</form> : <>
+			<p>Salasanan asettaminen onnistui!</p>
+			<p>
+				<a class="button" href="/profile">
+					<Icon href="/icons/duotone-arrow-left.svg" />
+					Takaisin omiin tietoihin
+				</a>
+			</p>
+		</>}
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>

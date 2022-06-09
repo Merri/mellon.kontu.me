@@ -5,7 +5,9 @@ import type { Member } from "$/types/db";
 
 const payload = typeof Astro.params.token === 'string' && getJwtPayload(Astro.params.token)
 if (!payload || typeof payload.email !== 'string') {
-	return Astro.redirect('/profile?dialog=invalid-login-token')
+	const response = Astro.redirect('/profile?dialog=invalid-login-token')
+	response.headers.set('Cache-Control', 'no-cache')
+	return response
 }
 
 const member = (await sql<Member[]>`SELECT * FROM members WHERE email = ${payload.email}`).pop()

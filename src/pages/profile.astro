@@ -21,7 +21,7 @@ const showLoginInvalidCredentials = !member && dialog === 'login-invalid-credent
 const showLoginInvalidEmail = !member && dialog === 'login-invalid-email'
 const showLoginCompleted = !!member && dialog === 'login-completed'
 const showRegisterCompleted = !!member && dialog === 'register-completed'
-const showInvalidLoginToken = !member && dialog === 'invalid-login-token'
+const showInvalidLoginToken = dialog === 'invalid-login-token'
 const showLoginFailed = !member && dialog === 'login-failed'
 const showUpdateCompleted = !member && dialog === 'update-completed'
 const showEmailUpdateCompleted = !!member && dialog === 'email-update-completed'

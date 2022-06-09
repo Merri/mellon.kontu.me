@@ -36,11 +36,13 @@ const password = typeof _password === 'string' ? _password : ''
 
 const hash = member.hash
 
-const text = `
+const getText = (dob: string) => `
 ## Tervehdys Mellonista!
 
 Tietojasi muutettiin juuri. Mikäli et ollut itse asialla, niin käy heti kirjautumassa ja vaihda salasanasi:
 ${new URL('/profile', Astro.request.url)}
+
+Syntymäpäiväksi on asetettu: ${dob}
 
 Kaapattiinko tunnuksesi? Vastaa tähän viestiin.
 `
@@ -93,6 +95,8 @@ const response: Response | DialogString | Errors = await new Promise((resolve) =
 					WHERE id = ${memberId}
 					RETURNING *
 				`).pop()
+
+				const text = getText(dobResult)
 
 				sendMail({
 					to: getMemberEmailField(updatedMember || member),
@@ -147,8 +151,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 						value={publicname} autocomplete="nickname" class={errors.has('publicname') ? 'error' :
 						undefined} aria-invalid={errors.has('publicname')} /></label>
 				<small id="description-publicname">Pakollinen. Ilmoittautumislistalla näkyvä nimi, kuten nimimerkki,
-					kutsumanimi tai oikea
-					etunimi.</small>
+					kutsumanimi tai oikea etunimi.</small>
 			</p>
 			<p class="form-field">
 				<label>Etu- ja sukunimi: <input id="fullname" aria-describedby="description-fullname" name="fullname"
@@ -163,16 +166,14 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 						pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])" autocomplete="off"
 						class={errors.has('dob') ? 'error' : undefined} aria-invalid={errors.has('dob')} /></label>
 				<small id="description-dob">Pakollinen. Esimerkki: 2001-12-19. Järjestäjä saa tietää ikäsi tapahtuman
-					alkaessa, mutta ei
-					syntymäpäivääsi.</small>
+					alkaessa, mutta ei syntymäpäivääsi.</small>
 			</p>
 			<p class="form-field">
 				<label>Puhelinnumero: <input id="phone" aria-describedby="description-phone" name="phone"
 						placeholder="+358401234567" type="tel" value={phone} autocomplete="tel"
 						class={errors.has('phone') ? 'error' : undefined} aria-invalid={errors.has('phone')} /></label>
 				<small id="description-phone">Esimerkiksi +358401234567. Puhelinnumero paljastetaan ainoastaan
-					tapahtuman
-					järjestäjälle.</small>
+					tapahtuman järjestäjälle.</small>
 			</p>
 			<p class="form-field">
 				<label>Salasana: <input id="password" aria-describedby="description-password" type="password"

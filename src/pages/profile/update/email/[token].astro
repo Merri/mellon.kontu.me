@@ -7,7 +7,9 @@ const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
 
 const payload = typeof Astro.params.token === 'string' && getJwtPayload(Astro.params.token)
 if (!payload || typeof payload.email !== 'string' || typeof payload.newEmail !== 'string') {
-	return Astro.redirect('/profile?dialog=invalid-login-token')
+	const response = Astro.redirect('/profile?dialog=invalid-login-token')
+	response.headers.set('Cache-Control', 'no-cache')
+	return response
 }
 
 const member = memberId != null ? (await sql<Member[]>`
