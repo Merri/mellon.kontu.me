@@ -10,39 +10,35 @@ import { meetupToZonedTime } from '$/lib/date';
 import { format } from 'date-fns-tz';
 import locale from 'date-fns/locale/fi/index.js'
 import PageFooter from '$/components/PageFooter.astro';
+import ErrorPage from '$/pages/404.astro'
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
 const id = Math.round(Number(Astro.params.id))
 
-const [meetup] = id > 0 ? (await sql<Meetup[]>`SELECT * FROM meetups WHERE id = ${id}`).map(meetupToZonedTime) : []
+const meetup = (id > 0 || undefined) && (await sql<Meetup[]>`SELECT * FROM meetups WHERE id = ${id}`).map(meetupToZonedTime).pop()
 
-if (meetup == null) {
-	return new Response(null, {
-		status: 404,
-		statusText: 'Not found'
-	});
-}
-
-const [place] = await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`
+const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
 const [{ name: organizerName }] =
-	(meetup.organizer === 'member' && await sql<{ name: string }[]>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`) ||
-	(meetup.organizer === 'organization' && meetup.organizationId && await sql<{ name: string }[]>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`) ||
+	(meetup?.organizer === 'member' && await sql<{ name: string }[]>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`) ||
+	(meetup?.organizer === 'organization' && meetup.organizationId && await sql<{ name: string }[]>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`) ||
 	[{ name: undefined }]
 
 const registrations = await sql<Registration[]>`SELECT * FROM registrations WHERE "meetupId" = ${id}`
 
-const registrationOpens = meetup.open != null && isBefore(new Date(), meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
-const registrationCloseDate = meetup.begin ? meetup.end ? isSameDay(meetup.begin, meetup.end) ? addMinutes(meetup.begin, -5) : endOfDay(meetup.begin) : meetup.begin : null
+const registrationOpens = meetup && meetup.open != null && isBefore(new Date(), meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
+const registrationCloseDate = meetup && meetup.begin ? meetup.end ? isSameDay(meetup.begin, meetup.end) ? addMinutes(meetup.begin, -5) : endOfDay(meetup.begin) : meetup.begin : null
 const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(new Date(), registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
 
-const meetupWasInThePast = meetup.end == null || isBefore(meetup.end, new Date())
+const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, new Date()))
 const textRegister = meetupWasInThePast ? 'Ilmoittautui' : 'Ilmoittautunut'
 const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Osallistumassa'
 const textCancel = meetupWasInThePast ? 'Perui' : 'Perunut'
 const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 
 ---
+
+{meetup ?
 
 <html lang="fi">
 
@@ -53,7 +49,8 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 	<main id="main">
 		<h1 style="margin-bottom:0">{meetup.title}</h1>
 		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
-		<div set:html={marked(meetup.description || undefined)} />
+		{!!meetup.description &&
+		<div set:html={marked(meetup.description)} />}
 		<h2>Muita yleisiä tietoja</h2>
 		<ul>
 			{registrationOpens && <li>Ilmoittautuminen aukeaa {registrationOpens}</li>}
@@ -133,3 +130,5 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 </body>
 
 </html>
+:
+<ErrorPage />}

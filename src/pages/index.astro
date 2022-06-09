@@ -1,15 +1,13 @@
 ---
-import { format } from 'date-fns-tz'
-import locale from 'date-fns/locale/fi/index.js'
 import BaseHead from "$/components/BaseHead.astro";
 import Fellowship from "$/components/Fellowship.astro";
-import PageHeader from "$/components/PageHeader.astro";
-import { sql } from "$/lib/db";
-import { Meetup, Place } from "$/types/db";
-import { getYmdUTC, meetupToZonedTime } from '$/lib/date';
+import Icon from "$/components/Icon.astro";
 import PageFooter from '$/components/PageFooter.astro';
-
-const opts = { locale, timeZone: 'Europe/Helsinki' }
+import PageHeader from "$/components/PageHeader.astro";
+import { getYmdUTC, meetupToZonedTime } from '$/lib/date';
+import { sql } from "$/lib/db";
+import { getTextMeetupDateRange, getTextRegistrationClose, getTextRegistrationOpen } from '$/lib/meetup';
+import type { Meetup, Organization, Place } from "$/types/db";
 
 const upcomingMeetups = (await sql<Meetup[]>`SELECT * FROM meetups WHERE meetups.end >= ${getYmdUTC()}`).map(meetupToZonedTime)
 
@@ -20,6 +18,16 @@ const placeMap = new Map<number, Place>()
 places.forEach(place => {
 	placeMap.set(place.id, place)
 })
+
+const organizationIds = new Set(upcomingMeetups.map(({ organizationId }) => organizationId).filter(x => x))
+
+const organizations = organizationIds.size ? await sql<Organization[]>`SELECT * FROM organizations WHERE id IN ${sql([...organizationIds])}` : []
+const organizationMap = new Map<number, Organization>()
+organizations.forEach(organization => {
+	organizationMap.set(organization.id, organization)
+})
+
+const now = new Date()
 
 ---
 
@@ -36,21 +44,37 @@ places.forEach(place => {
 		<p>Mellonissa voi ilmoittautua miitteihin.</p>
 		<h2>Tulevat miitit</h2>
 		{upcomingMeetups.length > 0 ? <dl>
-			{upcomingMeetups.map(meetup => <div>
+			{upcomingMeetups.map(meetup => {
+			const willOpen = getTextRegistrationOpen({ format: `EEEEEE d.M.Y 'klo' H:mm`, now, meetup })
+			const willClose = getTextRegistrationClose({ format: `EEEEEE d.M.Y 'klo' H:mm`, now, meetup })
+			const isOpen = willOpen == null && willClose != null
+
+			return <div>
 				<dt>
+					{meetup.organizer === 'organization' && meetup.organizationId != null &&
+					<small>{organizationMap.get(meetup.organizationId)?.name}</small>}
+					{meetup.organizer === 'member' && meetup.memberId != null && <small>Yksityishenkilön
+						järjestämä</small>}
+					{meetup.organizer === 'none' && <small>Epävirallinen oheistapahtuma (ei järjestäjää)</small>}
+					<br />
 					<a href={`/meetups/view/${meetup.id}`}><strong>{meetup.title}</strong></a>
 				</dt>
 				<dd>
-					{placeMap.get(meetup.placeId)?.name}<br />
-					{meetup.begin && format(meetup.begin, 'EEEEEE d.M.yyyy', opts)} &ndash; {meetup.end &&
-					format(meetup.end, 'EEEEEE d.M.yyyy', opts)}<br />
-					{meetup.open && <span>Ilmoittautuminen alkaa
-						{format(meetup.open, `d.M.yyyy 'klo' H:mm`, opts)}</span>}
+					{getTextMeetupDateRange(meetup)}<br />
+					<span>{placeMap.get(meetup.placeId)?.name}</span><br />
+					{isOpen && <p>
+						<a href={`/meetups/register/${meetup.id}`} class="button">
+							Ilmoittaudu!
+							<Icon href="/icons/duotone-calendar.svg" />
+						</a>
+					</p>}
+					{(willOpen && <span>Ilmoittautuminen alkaa {willOpen}</span>) || (willClose &&
+					<span>Ilmoittautuminen sulkeutuu {willClose}</span>) || <span>Ilmoittautuminen päättynyt</span>}
 				</dd>
-			</div>)}
+			</div>
+			})}
 		</dl> :
 		<p>Tällä hetkellä ei ole tulevia miittejä.</p>}
-		<p><a href="/meetups/add" class="button">Lisää uusi miitti</a></p>
 	</main>
 	<style>
 		dl {
@@ -60,8 +84,19 @@ places.forEach(place => {
 			margin: 1rem;
 		}
 
+		dl>div {
+			border: thin solid var(--border-color);
+			border-radius: 1rem;
+			padding: 1rem;
+		}
+
 		dt {
 			font-size: 1.25rem;
+		}
+
+		dt > small {
+			font-size: 0.875rem;
+			font-weight: bold;
 		}
 
 		dd {
