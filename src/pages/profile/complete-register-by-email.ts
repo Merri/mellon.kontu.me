@@ -1,4 +1,4 @@
-import validatePhoneNumber from 'phone'
+import { phone as validatePhoneNumber } from 'phone'
 
 import {
 	getEmailFromLoginCookie,
