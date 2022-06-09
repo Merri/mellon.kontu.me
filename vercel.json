@@ -3,5 +3,16 @@
 		"env": {
 			"ENABLE_VC_BUILD": "1"
 		}
-	}
+	},
+	"headers": [
+		{
+			"source": "/icons/(.*).svg",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31556952, immutable"
+				}
+			]
+		}
+	]
 }
