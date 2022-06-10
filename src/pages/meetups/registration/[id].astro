@@ -1,0 +1,210 @@
+---
+import { isBefore } from "date-fns";
+
+import BaseHead from "$/components/BaseHead.astro";
+import { FamilyMembers } from "$/components/FamilyMembers";
+import Icon from "$/components/Icon.astro";
+import PageHeader from "$/components/PageHeader.astro";
+import PageFooter from "$/components/PageFooter.astro";
+import { getMemberIdFromCookie } from "$/lib/auth";
+import { meetupToZonedTime } from "$/lib/date";
+import { sql } from "$/lib/db";
+import { getRegistrationCloseDate } from "$/lib/meetup";
+import ErrorPage from "$/pages/404.astro";
+import type { Meetup, Member, Place, Registration } from "$/types/db";
+import type { FamilyMember } from "$/types/registrations";
+
+const now = new Date()
+const id = Math.round(Number(Astro.params.id))
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+const meetup = (id > 0 || undefined) && (await sql<Meetup[]>`
+	SELECT *
+	FROM meetups
+	WHERE id = ${id}
+`).map(meetupToZonedTime).pop()
+const registrations: Registration[] = meetup && member ? (await sql<Registration[]>`
+	SELECT *
+	FROM registrations
+	WHERE "meetupId" = ${meetup.id} AND "memberId" = ${member.id}
+`) : []
+const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
+
+const isSubmit = Astro.request.method.toUpperCase() === 'POST'
+const isUpdate = registrations.length > 0
+
+const isString = (x: FormDataEntryValue): x is string => typeof x === 'string'
+const toNumber = (x: string) => parseInt(x, 10) || 0
+
+const formData = isSubmit ? await Astro.request.formData() : null
+const _email = formData?.get('email')
+
+const _publicname = formData?.getAll('publicname').filter(isString) ?? []
+const _name = formData?.getAll('name').filter(isString) ?? []
+const _age = formData?.getAll('age').filter(isString).map(toNumber) ?? []
+
+const _diet = formData?.getAll('diet').filter(isString) ?? []
+const _allergies = formData?.getAll('allergies').filter(isString) ?? []
+const _sauna = formData?.getAll('sauna').filter(isString) ?? []
+const _info = formData?.getAll('info').filter(isString) ?? []
+const _overnight = formData?.getAll('overnight').filter(isString) ?? []
+
+// Participant themselves
+const email = typeof _email === 'string' ? _email : ''
+const diet = _diet[0] || ''
+const allergies = _allergies[0] || ''
+const sauna = _sauna[0] || ''
+const info = _info[0] || ''
+const overnight = _overnight[0] || ''
+
+// Participant's family members
+const familyMembers: FamilyMember[] = _publicname.slice(1, 7).map((publicname = '', index) => ({
+	publicname,
+	name: _name[index],
+	age: _age[index],
+	diet: _diet[index],
+	allergies: _allergies[index],
+	sauna: _sauna[index],
+	info: _info[index],
+	overnight: _overnight[index],
+}))
+
+const closeDate = getRegistrationCloseDate(meetup)
+const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+
+---
+
+{meetup && place ? <html lang="fi">
+
+<BaseHead title={`Ilmoittautuminen tapahtumaan ${meetup.title}`}
+	description="Tällä sivulla voit ilmoittautua tapahtumaan" />
+
+<body>
+	<PageHeader />
+
+	{isRegistrationOpen ?
+	<main id="main">
+		<p>
+			<a class="button" href={`/meetups/view/${id}`}>
+				<Icon href="/icons/arrow-left.svg" />
+				Tapahtuman esittely
+			</a>
+		</p>
+		<h1>{meetup.title}</h1>
+		<p>
+			{!isUpdate ? <span>Olet ilmoittautumassa tähän tapahtumaan.</span> : <span>Olet ilmoittautunut tähän
+				tapahtumaan.</span>}
+			{meetup.ageLimit > 0 && <span>Tapahtuman ikäraja on ${meetup.ageLimit} vuotta.</span>}
+			{meetup.isFree ? <span>Tapahtuma on maksuton.</span> : <span>Osallistuminen maksaa, hintatiedot saa
+				järjestäjältä.</span>}
+		</p>
+		<form action="" method="POST">
+			{!member && <p class="form-field">
+				<label>
+					Sähköpostiosoitteesi:
+					<input aria-describedby="description-email" type="email" name="email" autocomplete="email"
+						value={email} required />
+				</label>
+				<small id="description-email">Saat viestin jolla vahvistaa ilmoittautumisesi.</small><br />
+				Tai vaihtoehtoisesti voit myös <a href="/profile">kirjautua Melloniin</a> ja ilmoittautua vasta sitten.
+			</p>}
+			<input type="hidden" name="publicname[]" value="" />
+			<input type="hidden" name="name[]" value="" />
+			<input type="hidden" name="age[]" value="" />
+			{meetup.enableCampingMembers || meetup.enableCampingMembers ? <p class="form-field">
+				<label>
+					Yöpyminen:
+					<select name="overnight[]">
+						<option value="bed" selected={overnight==='bed' }>Nukun sängyssä</option>
+						{meetup.enableCampingMembers && <option value="camping" selected={overnight==='camping' }>Nukun
+							omassa teltassa</option>}
+						{meetup.enableDailyVisitors && <option value="dailyVisitor" selected={overnight==='dailyVisitor'
+							}>Käyn ainoastaan päivävierailulla
+						</option>}
+					</select>
+				</label>
+				<small>Tapahtumassa on käytettävissä {meetup.beds || place.beds} sänkypaikkaa.</small>
+				{meetup.enableCampingMembers && <span><br />Telttailemalla mahdollistat joko enemmän osallistujia tai
+					vaihtoehtoisesti enemmän tilaa muille osallistujille.</span>}
+				{meetup.enableDailyVisitors && <span><br />Päivävierailijalla ei ole sänkypaikkaa eikä oikeutta yöpyä
+					tapahtumapaikalla. {!meetup.isFree && 'Varmista päivävierailun hinta järjestäjältä.'}</span>}
+			</p> : <p>Tapahtumassa on käytettävissä {meetup.beds || place.beds} sänkypaikkaa.</p>}
+			<p class="form-field">
+				<label for="diet">
+					Ruokavalio:
+					<select id="diet" name="diet[]" autocomplete="off">
+						<option value="none" selected={diet==='none' }>En osallistu yhteisruokailuihin</option>
+						<option value="all" selected={diet==='all' }>Kaikki käy</option>
+						<option value="semivegetarian" selected={diet==='semivegetarian' }>Semivegetaarinen</option>
+						<option value="lacto-ovarian" selected={diet==='lacto-ovarian' }>Lakto-ovovegetaarinen</option>
+						<option value="lactovegetarian" selected={diet==='lactovegetarian' }>Laktovegetaarinen</option>
+						<option value="pescovegetarian" selected={diet==='pescovegetarian' }>Pescovegetaarinen</option>
+						<option value="vegan" selected={diet==='vegan' }>Vegaani</option>
+					</select>
+				</label>
+				<small>Tämä vaikuttaa tapahtuman järjestäjän ostamiin ruoka-aineiden määriin.</small>
+			</p>
+			{meetup.enableAllergyFields && <>
+				{member ?
+				<p class="form-field">
+					<label>
+						Allergiat:
+						<textarea name="allergies[]" autocomplete="off" cols={40} value={allergies}></textarea>
+					</label>
+					<small>Tämä auttaa järjestäjää ohjeistamaan muita osallistujia jättämään tuomatta vakavia
+						allergioiden aiheuttajia, sekä vaikuttaa yhteisruokailujen ruoka-aineisiin.</small>
+				</p> : <p>Kirjaudu sisään jos sinun tarvitsee ilmoittaa (vakavista) allergioista.</p>}
+			</>}
+			{meetup.enableSaunaOption && <p class="form-field">
+				<label>
+					Saunavuorot:
+					<select name="sauna[]">
+						<option value="any" selected={sauna==='any' }>Sekavuoro</option>
+						<option value="male" selected={sauna==='male' }>Miestenvuoro</option>
+						<option value="female" selected={sauna==='female' }>Naistenvuoro</option>
+						<option value="family" selected={sauna==='family' }>Oma vuoro / perhevuoro</option>
+						<option value="none" selected={sauna==='none' }>En sauno</option>
+					</select>
+				</label>
+				<small>Toive järjestettävistä saunavuoroista.</small>
+			</p>}
+			{member ?
+			<p class="form-field">
+				<label>
+					Lisätietoja:
+					<textarea name="info[]" cols={40} value={info}></textarea>
+				</label>
+				<small>Voit kirjoittaa tähän lyhyesti tarkennuksia aiempiin kohtiin. Älä jätä tähän kenttään kysymyksiä
+					vaan kysy ne suoraan järjestäjältä.</small>
+			</p> : <p>Kirjaudu sisään jos sinun tarvitsee ilmoittaa tarkempia tietoja.</p>}
+			{meetup.enableFamilyMembers && <>
+				{member ? <div>
+					<h3>Perheenjäsenien ilmoittaminen</h3>
+					<FamilyMembers familyMembers={familyMembers} client:load />
+				</div> : <p>Haluatko samalla ilmoittaa perheenjäseniä? Kirjaudu ensin sisälle!</p>}
+			</>}
+			<p>
+				<button type="submit">
+					<Icon href={isUpdate ? '/icons/check.svg' : '/icons/send-2.svg' } />
+					{isUpdate ? 'Tallenna ilmoittautuminen' : 'Lähetä ilmoittautuminen'}
+				</button>
+			</p>
+		</form>
+	</main> : <main id="main">
+		<h1>{meetup.title}</h1>
+		<p><strong>Ilmoittautuminen ei ole auki!</strong></p>
+		<p>Tähän miittiin ei voi tällä hetkellä ilmoittautua.</p>
+		<p>
+			<a class="button" href={`/meetups/view/${id}`}>
+				<Icon href="/icons/users.svg" />
+				Tapahtuman esittely
+			</a>
+		</p>
+	</main>}
+
+	<PageFooter />
+</body>
+
+</html> :
+<ErrorPage />}

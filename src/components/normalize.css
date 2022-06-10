@@ -1,3 +1,33 @@
+@property --icon-color {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: unset;
+}
+
+@property --icon-light-color {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: unset;
+}
+
+@property --icon-dark-color {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: unset;
+}
+
+@property --icon-shade-color {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: unset;
+}
+
+@property --icon-stroke-color {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: unset;
+}
+
 :root {
 	--font-serif: 'Palatino Linotype', Palatino, Palladio, 'URW Palladio L', 'Book Antiqua', Baskerville,
 		'Bookman Old Style', 'Bitstream Charter', 'Nimbus Roman No9 L', Garamond, 'Apple Garamond',
@@ -10,8 +40,11 @@
 	--error-color: #ba4d4f;
 	--error-color-alt: #d5757a;
 	--focus-color: #5d81be;
-	--icon-color: currentColor;
-	--icon-color-alt: transparent;
+	--icon-color: unset;
+	--icon-dark-color: unset;
+	--icon-light-color: unset;
+	--icon-stroke-color: currentColor;
+	--icon-shade-color: transparent;
 	--link-color: #4f8c31;
 }
 
@@ -25,7 +58,7 @@
 }
 
 :is(button, .button) {
-	--icon-color-alt: rgba(96, 48, 32, 0.125);
+	--icon-shade-color: rgba(96, 48, 32, 0.125);
 	align-items: center;
 	background: var(--button-color);
 	background-image: linear-gradient(
@@ -69,12 +102,12 @@
 }
 
 :is(button, .button):hover {
-	--icon-color-alt: rgba(96, 48, 32, 0.225);
+	--icon-shade-color: rgba(96, 48, 32, 0.225);
 	filter: brightness(1.0625);
 }
 
 :is(button, .button):active {
-	--icon-color-alt: rgba(96, 48, 32, 0.275);
+	--icon-shade-color: rgba(96, 48, 32, 0.275);
 	box-shadow: -0.125rem -0.125rem 0.25rem rgba(0, 0, 0, 0.125), inset 1px 1px 2px white,
 		inset -1px -1px 2px rgba(0, 0, 0, 0.25);
 	filter: brightness(0.875);
@@ -105,7 +138,7 @@ main {
 }
 
 :where(h1) {
-	font-size: 2em;
+	font-size: 2.5em;
 }
 
 :where(h2) {

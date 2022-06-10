@@ -12,7 +12,7 @@ export interface Meetup {
 	ageLimit: number
 	beds: number
 	enableAllergyFields: boolean
-	enableCampignMembers: boolean
+	enableCampingMembers: boolean
 	enableDailyVisitors: boolean
 	enableFamilyMembers: boolean
 	enableSaunaOption: boolean

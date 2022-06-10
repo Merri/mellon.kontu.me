@@ -69,7 +69,7 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 				<strong>{place.name}</strong>
 				{place.streetAddress && <><br />{place.streetAddress}<br />{place.postalCode}{' '}{place.location}</>}
 			</p>
-			{meetup.beds > 0 && <p>Sänkypaikkoja: {meetup.beds} {meetup.enableCampignMembers && <span> (miitissä on
+			{meetup.beds > 0 && <p>Sänkypaikkoja: {meetup.beds} {meetup.enableCampingMembers && <span> (miitissä on
 					mahdollista telttailla)</span>}</p>}
 			{place.longitude ? <img loading="lazy" alt="" src={`/places/map/${place.id}?zoom=3`} width="1305"
 				height="748" /> :

@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 
 type HashCallback = (error: Error | null, hash?: string) => void
 type VerifyCallback = (error: Error | null, verified?: boolean) => void

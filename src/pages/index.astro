@@ -63,9 +63,9 @@ organizations.forEach(organization => {
 					<span>{placeMap.get(meetup.placeId)?.name}</span><br />
 					{getTextMeetupDateRange(meetup)}<br />
 					{isOpen && <p>
-						<a href={`/meetups/register/${meetup.id}`} class="button">
+						<a href={`/meetups/registration/${meetup.id}`} class="button">
 							Ilmoittaudu!
-							<Icon href="/icons/duotone-calendar.svg" />
+							<Icon href="/icons/calendar.svg" />
 						</a>
 					</p>}
 					<p>
