@@ -1,0 +1,19 @@
+{
+	"engines": {
+		"npm": "use-pnpm",
+		"yarn": "use-pnpm"
+	},
+	"name": "mellon-on-node-server",
+	"version": "2022.0.0",
+	"main": "index.js",
+	"type": "module",
+	"license": "MIT",
+	"dependencies": {
+		"express": "4.18.1"
+	},
+	"scripts": {
+		"start": "node index.js"
+	},
+	"keywords": [],
+	"description": "Node server to run Mellon dist"
+}

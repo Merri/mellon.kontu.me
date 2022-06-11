@@ -1,4 +1,5 @@
 export interface FamilyMember {
+	id?: number
 	publicname?: string
 	name?: string
 	age?: number
