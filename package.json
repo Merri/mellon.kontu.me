@@ -33,7 +33,7 @@
 	},
 	"scripts": {
 		"start": "astro dev",
-		"start-node": "node server/index.js",
+		"start-node": "yarn build --node && node server/index.js",
 		"build": "astro build",
 		"dev": "astro dev --local-development"
 	},

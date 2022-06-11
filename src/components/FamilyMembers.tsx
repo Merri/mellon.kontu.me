@@ -33,25 +33,35 @@ export function FamilyMembers(props: FamilyMemberProps) {
 			<h3>Perheenjäsenet</h3>
 			<p>Voit ilmoittaa itsesi lisäksi viisi perheenjäsentä.</p>
 			<For each={members()}>
-				{(member) => (
+				{(member, index) => (
 					<div class="family-member">
-						<input type="hidden" name="id[]" value={member.id || ''} />
+						<input type="hidden" name={`person[${index() + 1}][id]`} value={member.id || ''} />
 						<p class="form-field">
 							<label>
 								Nimi ilmoittautumislistalla:
-								<input type="text" name="publicname[]" value={member.publicname || ''} />
+								<input
+									type="text"
+									name={`person[${index() + 1}][publicname]`}
+									value={member.publicname || ''}
+								/>
 							</label>
 						</p>
 						<p class="form-field">
 							<label>
 								Nimi:
-								<input type="text" name="name[]" value={member.name || ''} />
+								<input type="text" name={`person[${index() + 1}][name]`} value={member.name || ''} />
 							</label>
 						</p>
 						<p class="form-field">
 							<label>
 								Ikä:
-								<input type="number" min={0} max={125} name="age[]" value={member.age ?? 9} />
+								<input
+									type="number"
+									min={0}
+									max={125}
+									name={`person[${index() + 1}][age]`}
+									value={member.age ?? 9}
+								/>
 							</label>
 							<small>Ikä tapahtuman alkamispäivänä.</small>
 						</p>
@@ -59,7 +69,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 							<p class="form-field">
 								<label>
 									Saunavuorot:
-									<select name="sauna[]">
+									<select name={`person[${index() + 1}][sauna]`}>
 										<option value="any" selected={member.sauna === 'any'}>
 											Sekavuoro
 										</option>
@@ -83,7 +93,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 							<p class="form-field">
 								<label>
 									Yöpyminen:
-									<select name="overnight[]">
+									<select name={`person[${index() + 1}][overnight]`}>
 										<option value="bed" selected={member.overnight === 'bed'}>
 											Nukkuu sängyssä
 										</option>
@@ -104,7 +114,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 						<p class="form-field">
 							<label>
 								Ruokavalio:
-								<select name="diet[]" autocomplete="off">
+								<select name={`person[${index() + 1}][diet]`} autocomplete="off">
 									<option value="none" selected={member.diet === 'none'}>
 										Ei osallistu yhteisruokailuihin
 									</option>
@@ -133,7 +143,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 							<p class="form-field">
 								<label>
 									Allergiat:
-									<textarea name="allergies[]" autocomplete="off" cols={40}>
+									<textarea name={`person[${index() + 1}][allergies]`} autocomplete="off" cols={40}>
 										{member.allergies || ''}
 									</textarea>
 								</label>
@@ -142,7 +152,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 						<p class="form-field">
 							<label>
 								Lisätietoja:
-								<textarea name="info[]" cols={40}>
+								<textarea name={`person[${index() + 1}][info]`} cols={40}>
 									{member.info || ''}
 								</textarea>
 							</label>

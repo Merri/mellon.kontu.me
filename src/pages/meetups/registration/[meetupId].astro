@@ -15,14 +15,14 @@ import type { Meetup, Member, Place, Registration } from "$/types/db";
 import type { FamilyMember } from "$/types/registrations";
 
 const now = new Date()
-const id = Math.round(Number(Astro.params.id))
+const meetupId = Math.round(Number(Astro.params.meetupId))
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
 const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
-const meetup = (id > 0 || undefined) && (await sql<Meetup[]>`
+const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
 	SELECT *
 	FROM meetups
-	WHERE id = ${id}
+	WHERE id = ${meetupId}
 `).map(meetupToZonedTime).pop()
 const registrations: Registration[] = meetup && member ? (await sql<Registration[]>`
 	SELECT *
@@ -39,48 +39,58 @@ const hasFamilyMembers = member && meetup ? meetup.enableFamilyMembers : false
 const hasOvernight = meetup ? meetup.enableCampingMembers || meetup.enableDailyVisitors : false
 const hasSauna = place && meetup ? place.hasSauna && meetup.enableSaunaOption : false
 
-const isString = (x: FormDataEntryValue): x is string => typeof x === 'string'
-const toNumber = (x: string) => x ? (parseInt(x, 10) || 0) : undefined
-
 const formData = isSubmit ? await Astro.request.formData() : null
 const _email = !member && formData?.get('email') || undefined
 
-// Reminder: we can't trust ID coming from user input
-const _id = formData?.getAll('id[]').filter(isString).map(toNumber) || []
-const _publicname = formData?.getAll('publicname[]').filter(isString) || []
-const _name = formData?.getAll('name[]').filter(isString) || []
-const _age = formData?.getAll('age[]').filter(isString).map(toNumber) || []
+const persons: FamilyMember[] = []
 
-const _diet = formData?.getAll('diet[]').filter(isString) || []
-const _allergies = (hasAllergies && formData?.getAll('allergies[]').filter(isString)) || []
-const _sauna = (hasSauna && formData?.getAll('sauna[]').filter(isString)) || []
-const _info = (member && formData?.getAll('info[]').filter(isString)) || []
-const _overnight = (hasOvernight && formData?.getAll('overnight[]').filter(isString)) || []
+if (formData) for (let [key, value] of formData.entries()) {
+	if (typeof value !== 'string') continue
 
-console.log(isSubmit, '_allergies', _allergies, formData?.getAll('allergies[]'))
+	const item = /^person\[(\d)\]\[(.*)\]$/.exec(key)
+	if (item && persons.length < 6) {
+		const [_, index, field] = item
+		const i = Number(index)
+		if (persons[i] == null) persons[Number(index)] = {}
+		if (field === 'age' || field === 'id') {
+			if (value) persons[i][field] = parseInt(value, 10) || 0
+		} else {
+			// @ts-ignore
+			persons[i][field] = value
+		}
+	}
+}
+
+const validIds = new Set(registrations.map(({ id }) => id))
+
+persons.forEach(person => {
+	if (person.id != null) {
+		if (validIds.has(person.id)) {
+			validIds.delete(person.id)
+		} else {
+			delete person.id
+		}
+	}
+	if (!hasAllergies) delete person.allergies
+	if (!member) delete person.info
+	if (!hasOvernight) delete person.overnight
+	if (!hasSauna) delete person.sauna
+})
+
+console.log('persons', persons, 'formData.entries', Array.from(formData?.entries() ?? []))
+
+const person = persons.shift() || {}
 
 // Participant themselves
 const email = typeof _email === 'string' ? _email : ''
-const diet = _diet[0] || ''
-const allergies = _allergies[0] || ''
-const sauna = _sauna[0] || ''
-const info = _info[0] || ''
-const overnight = _overnight[0] || ''
-
-console.log('allergies', allergies, _allergies)
+const diet = person.diet || ''
+const allergies = person.allergies || ''
+const sauna = person.sauna || ''
+const info = person.info || ''
+const overnight = person.overnight || ''
 
 // Participant's family members
-const familyMembers: FamilyMember[] = hasFamilyMembers ? _publicname.map((publicname = '', index) => ({
-	id: _id[index],
-	publicname: publicname,
-	name: _name[index],
-	age: _age[index],
-	diet: _diet[index],
-	allergies: _allergies[index],
-	sauna: _sauna[index],
-	info: _info[index],
-	overnight: _overnight[index],
-})).slice(1, 6) : []
+const familyMembers: FamilyMember[] = hasFamilyMembers ? persons : []
 
 const closeDate = getRegistrationCloseDate(meetup)
 const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
@@ -98,7 +108,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 	{isRegistrationOpen ?
 	<main id="main">
 		<p>
-			<a class="button" href={`/meetups/view/${id}`}>
+			<a class="button" href={`/meetups/view/${meetupId}`}>
 				<Icon href="/icons/arrow-left.svg" />
 				Tapahtuman esittely
 			</a>
@@ -112,7 +122,9 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				järjestäjältä.</span>}
 		</p>
 		<form action="" method="POST">
-			<h2><Icon href="/icons/user-1.svg" size={2.1875} /> Omat tiedot</h2>
+			<h2>
+				<Icon href="/icons/user-1.svg" size={2.1875} /> Omat tiedot
+			</h2>
 			{!member && <p class="form-field">
 				<label>
 					Sähköpostiosoitteesi:
@@ -122,15 +134,15 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<small id="description-email">Saat viestin jolla vahvistaa ilmoittautumisesi.</small><br />
 				Tai vaihtoehtoisesti voit myös <a href="/profile">kirjautua Melloniin</a> ja ilmoittautua vasta sitten.
 			</p>}
-			<input type="hidden" name="id[]" value={_id[0] || '' } />
-			<input type="hidden" name="publicname[]" value="" />
-			<input type="hidden" name="name[]" value="" />
-			<input type="hidden" name="age[]" value="" />
+			<input type="hidden" name="person[0][id]" value={person.id || '' } />
+			<input type="hidden" name="person[0][publicname]" value="" />
+			<input type="hidden" name="person[0][name]" value="" />
+			<input type="hidden" name="person[0][age]" value="" />
 			{place.hasSauna && <>
 				{meetup.enableSaunaOption ? <p class="form-field">
 					<label for="sauna">
 						Saunavuorot:
-						<select id="sauna" name="sauna[]">
+						<select id="sauna" name="person[0][sauna]">
 							<option value="any" selected={sauna==='any' }>Sekavuoro</option>
 							<option value="male" selected={sauna==='male' }>Miestenvuoro</option>
 							<option value="female" selected={sauna==='female' }>Naistenvuoro</option>
@@ -144,7 +156,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 			{hasOvernight ? <p class="form-field">
 				<label for="overnight">
 					Yöpyminen:
-					<select id="overnight" name="overnight[]">
+					<select id="overnight" name="person[0][overnight]">
 						<option value="bed" selected={overnight==='bed' }>Nukun sängyssä</option>
 						{meetup.enableCampingMembers && <option value="camping" selected={overnight==='camping' }>Nukun
 							omassa teltassa</option>}
@@ -162,7 +174,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 			<p class="form-field">
 				<label for="diet">
 					Ruokavalio:
-					<select id="diet" name="diet[]" autocomplete="off">
+					<select id="diet" name="person[0][diet]" autocomplete="off">
 						<option value="all" selected={diet==='all' }>Kaikki käy</option>
 						<option value="semivegetarian" selected={diet==='semivegetarian' }>Semivegetaarinen</option>
 						<option value="lacto-ovarian" selected={diet==='lacto-ovarian' }>Lakto-ovovegetaarinen</option>
@@ -179,7 +191,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<p class="form-field">
 					<label>
 						Allergiat:
-						<textarea name="allergies[]" autocomplete="off" cols={40}>{allergies}</textarea>
+						<textarea name="person[0][allergies]" autocomplete="off" cols={40}>{allergies}</textarea>
 					</label>
 					<small>Tämä auttaa järjestäjää ohjeistamaan muita osallistujia jättämään tuomatta vakavia
 						allergioiden aiheuttajia, sekä vaikuttaa yhteisruokailujen ruoka-aineisiin.</small>
@@ -189,7 +201,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 			<p class="form-field">
 				<label>
 					Lisätietoja:
-					<textarea name="info[]" cols={40}>{info}</textarea>
+					<textarea name="person[0][info]" cols={40}>{info}</textarea>
 				</label>
 				<small>Voit kirjoittaa tähän lyhyesti tarkennuksia aiempiin kohtiin. Älä jätä tähän kenttään kysymyksiä
 					vaan kysy ne suoraan järjestäjältä.</small>
@@ -208,12 +220,14 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 						}
 
 						.family-member {
-							border-top: thin solid black;
+							border-top: 3px double var(--border-color);
 						}
 
 						.family-member-addition {
+							border-top: 3px double var(--border-color);
 							display: flex;
 							justify-content: flex-end;
+							padding-top: 1rem;
 						}
 
 						.family-member-addition button {
@@ -234,7 +248,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 		<p><strong>Ilmoittautuminen ei ole auki!</strong></p>
 		<p>Tähän miittiin ei voi tällä hetkellä ilmoittautua.</p>
 		<p>
-			<a class="button" href={`/meetups/view/${id}`}>
+			<a class="button" href={`/meetups/view/${meetupId}`}>
 				<Icon href="/icons/users.svg" />
 				Tapahtuman esittely
 			</a>
