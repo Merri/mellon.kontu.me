@@ -327,11 +327,11 @@ if (member) {
 					<label for="sauna">
 						Saunavuorot:
 						<select id="sauna" name="person[0][sauna]">
+							<option value="none" selected={person.sauna==='none' }>Ei väliä</option>
 							<option value="any" selected={person.sauna==='any' }>Sekavuoro</option>
 							<option value="male" selected={person.sauna==='male' }>Miestenvuoro</option>
 							<option value="female" selected={person.sauna==='female' }>Naistenvuoro</option>
 							<option value="family" selected={person.sauna==='family' }>Oma vuoro / perhevuoro</option>
-							<option value="none" selected={person.sauna==='none' }>En sauno</option>
 						</select>
 					</label>
 					<small>Toive järjestettävistä saunavuoroista.</small>

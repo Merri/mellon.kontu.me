@@ -94,6 +94,9 @@ export function FamilyMembers(props: FamilyMemberProps) {
 								<label>
 									Saunavuorot:
 									<select name={`person[${index() + 1}][sauna]`}>
+										<option value="none" selected={member.sauna === 'none'}>
+											Ei väliä
+										</option>
 										<option value="any" selected={member.sauna === 'any'}>
 											Sekavuoro
 										</option>
@@ -105,9 +108,6 @@ export function FamilyMembers(props: FamilyMemberProps) {
 										</option>
 										<option value="family" selected={member.sauna === 'family'}>
 											Oma vuoro / perhevuoro
-										</option>
-										<option value="none" selected={member.sauna === 'none'}>
-											En sauno
 										</option>
 									</select>
 								</label>
@@ -139,9 +139,6 @@ export function FamilyMembers(props: FamilyMemberProps) {
 							<label>
 								Ruokavalio:
 								<select name={`person[${index() + 1}][diet]`} autocomplete="off">
-									<option value="none" selected={member.diet === 'none'}>
-										Ei osallistu yhteisruokailuihin
-									</option>
 									<option value="all" selected={member.diet === 'all'}>
 										Kaikki käy
 									</option>
@@ -159,6 +156,9 @@ export function FamilyMembers(props: FamilyMemberProps) {
 									</option>
 									<option value="vegan" selected={member.diet === 'vegan'}>
 										Vegaani
+									</option>
+									<option value="none" selected={member.diet === 'none'}>
+										Ei osallistu yhteisruokailuihin
 									</option>
 								</select>
 							</label>
