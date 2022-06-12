@@ -35,6 +35,21 @@ export function FamilyMembers(props: FamilyMemberProps) {
 			<For each={members()}>
 				{(member, index) => (
 					<div class="family-member">
+						{member.id == null && (
+							<button
+								type="button"
+								class="button-alt"
+								title="Poista"
+								onclick={(event) => {
+									event.preventDefault()
+									const i = index()
+									setMembers(members => members.filter((_, index) => index !== i))
+								}}
+								style="border-radius:50%;float:right;min-width:0;padding-inline:0.5rem;margin-top:1rem"
+							>
+								<Icon href="/icons/cross.svg" />
+							</button>
+						)}
 						<input type="hidden" name={`person[${index() + 1}][id]`} value={member.id || ''} />
 						<p class="form-field">
 							<label>
