@@ -261,7 +261,7 @@ if (member) {
 } else if (isRegistrationOpen) {
 	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
 } else if (!isSubmit) {
-	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
+	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
 }
 
 ---
