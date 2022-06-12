@@ -38,7 +38,8 @@ const registrations = await sql<Registration[]>`
 	ORDER BY "isOrganizer" DESC,
 		"cancelled" ASC NULLS FIRST,
 		"confirmed" ASC NULLS LAST,
-		"registered" ASC NULLS LAST
+		"registered" ASC NULLS LAST,
+		"id" ASC
 `
 
 const closeDate = getRegistrationCloseDate(meetup)
@@ -149,11 +150,15 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 
 const dialog = new URL(Astro.request.url).searchParams.get('dialog')
 
-if (member) {
-	if (!isPost) Astro.response.headers.set('Cache-Control', 'private, max-age=30')
+if (member || dialog != null) {
+	if (!isPost) {
+		Astro.response.headers.set('Cache-Control', 'private, max-age=0')
+	} else {
+		Astro.response.headers.set('Cache-Control', 'no-cache')
+	}
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
 } else if (isRegistrationOpen) {
-	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
+	Astro.response.headers.set('Cache-Control', 'public, max-age=0')
 } else {
 	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
 }
@@ -179,7 +184,7 @@ if (member) {
 		{memberRegs.length > 0 ? <div class="participated">
 			<h2>Olet ilmoittautunut tähän tapahtumaan!</h2>
 			<p>Voit päivittää tässä osallistumisesi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
-			<form action="" method="POST">
+			<form action={`/meetups/view/${meetup.id}`} method="POST">
 				<dl>
 					{memberRegs.map(reg => {
 					const regLevel = getRegLevel(reg)
@@ -280,8 +285,75 @@ if (member) {
 			</p>
 			{meetup.beds > 0 && <p>Sänkypaikkoja: {meetup.beds} {meetup.enableCampingMembers && <span> (miitissä on
 					mahdollista telttailla)</span>}</p>}
-			{place.longitude ? <img loading="lazy" alt="" src={`/places/map/${place.id}?zoom=3`} width="1305"
-				height="748" /> :
+			{place.longitude ? <div class="map-browser">
+				<button type="button" class="map-browser-button left" hidden>
+					<Icon href="/icons/zoom-out.svg" />
+				</button>
+				<img class="map-browser-image" loading="lazy" alt="" src={`/places/map/${place.id}?zoom=3`} width="1305"
+					height="748" />
+				<button type="button" class="map-browser-button right" hidden>
+					<Icon href="/icons/zoom-in.svg" />
+				</button>
+				<script type="module">
+					const image = document.querySelector('.map-browser-image')
+					const left = document.querySelector('.map-browser-button.left')
+					const right = document.querySelector('.map-browser-button.right')
+					left.removeAttribute('hidden')
+					right.removeAttribute('hidden')
+					right.disabled = true
+
+					let zoomLevel = 3
+
+					function imageLoaded() {
+						left.disabled = zoomLevel === 0
+						right.disabled = zoomLevel === 3
+						image.style = ''
+					}
+
+					image.onload = imageLoaded
+					image.onerror = imageLoaded
+
+					function setZoom(level) {
+						zoomLevel = Math.min(Math.max(level, 0), 3)
+						const url = new URL(image.src)
+						url.searchParams.set('zoom', zoomLevel.toString())
+						left.disabled = right.disabled = true
+						image.style = 'opacity:0.5'
+						image.src = url
+					}
+
+					left.onclick = () => setZoom(zoomLevel - 1)
+					right.onclick = () => setZoom(zoomLevel + 1)
+				</script>
+				<style>
+					.map-browser {
+						background-color: var(--border-color);
+						box-shadow: 0 0 0 1px var(--border-color);
+						position: relative;
+					}
+
+					button.map-browser-button {
+						border-radius: 50%;
+						min-width: 0;
+						padding-inline: 0.5rem;
+						position: absolute;
+						top: 50%;
+						transform: translateY(-50%);
+					}
+
+					.map-browser-button:active:not(:disabled) {
+						transform: translateY(-50%) scale(1.25);
+					}
+
+					.left {
+						left: 1rem;
+					}
+
+					.right {
+						right: 1rem;
+					}
+				</style>
+			</div> :
 			<hr />}
 			{place.description &&
 			<div set:html={marked(place.description)} />}
@@ -304,7 +376,7 @@ if (member) {
 					{registrations.map((registration, index) => <tr>
 						<td>{index + 1}</td>
 						<td>{registration.publicname}</td>
-						<td>{registration.isOrganizer && 'Järjestäjä'} || {(registration.cancelled && textCancel) ||
+						<td>{registration.isOrganizer && 'Järjestäjä' || (registration.cancelled && textCancel) ||
 							(registration.confirmed && textConfirm) || (registration.registered && textRegister) ||
 							textAdded}</td>
 					</tr>)}

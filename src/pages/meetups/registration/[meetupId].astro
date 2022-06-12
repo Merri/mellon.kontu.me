@@ -1,7 +1,6 @@
 ---
 import { differenceInYears, isBefore } from 'date-fns'
 import JWT from 'jsonwebtoken'
-import { marked } from 'marked'
 
 import BaseHead from '$/components/BaseHead.astro'
 import { FamilyMembers } from '$/components/FamilyMembers'
@@ -12,9 +11,7 @@ import { getMemberIdFromCookie } from '$/lib/auth'
 import { getLogger } from '$/lib/bugsnag'
 import { meetupToZonedTime } from '$/lib/date'
 import { sql } from '$/lib/db'
-import { getMemberEmailField, sendMail } from '$/lib/email'
 import { getMeetupBankReference, getRegistrationCloseDate } from '$/lib/meetup'
-import { getJoinText } from '$/lib/registerToMeetup'
 import ErrorPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
@@ -37,6 +34,7 @@ const registrations: Registration[] = isRegistrationOpen && member ? await sql<R
 	SELECT *
 	FROM registrations
 	WHERE "meetupId" = ${meetup.id} AND "memberId" = ${member.id}
+	ORDER BY id ASC
 ` : []
 const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
 
@@ -164,7 +162,7 @@ if (meetup && place) {
 					updates.push({
 						id: person.id,
 						publicname: person.publicname || '',
-						age: person.age || null,
+						age: person.age ?? null,
 						info
 					})
 				} else {
@@ -172,7 +170,7 @@ if (meetup && place) {
 						meetupId,
 						memberId: member.id,
 						publicname: person.publicname || '',
-						age: person.age || null,
+						age: person.age ?? null,
 						info,
 						registered: now,
 						bankReference,
@@ -260,8 +258,10 @@ const familyMembers: FamilyMember[] = hasFamilyMembers ? persons : []
 if (member) {
 	Astro.response.headers.set('Cache-Control', 'no-cache')
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
+} else if (isRegistrationOpen) {
+	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
 } else if (!isSubmit) {
-	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
+	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
 }
 
 ---
