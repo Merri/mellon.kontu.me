@@ -20,3 +20,7 @@ export function meetupToZonedTime(meetup: Meetup) {
 	if (meetup.open) meetup.open = utcToZonedTime(meetup.open, 'Europe/Helsinki')
 	return meetup
 }
+
+export function toZonedTime(date: Date) {
+	return utcToZonedTime(date, 'Europe/Helsinki')
+}

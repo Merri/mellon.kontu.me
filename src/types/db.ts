@@ -70,7 +70,7 @@ export interface Registration {
 	publicname: string
 	age: number
 	info: string | null
-	sauna: string | null
+	days: string | null
 	registered: Date | null
 	confirmed: Date | null
 	bankReference: string

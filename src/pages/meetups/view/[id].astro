@@ -1,5 +1,5 @@
 ---
-import { isBefore, endOfDay, isSameDay, addMinutes } from 'date-fns'
+import { isBefore, eachDayOfInterval, endOfDay, isSameDay, isWithinInterval, addMinutes, startOfDay } from 'date-fns'
 import locale from 'date-fns/locale/fi/index.js'
 import { format } from 'date-fns-tz';
 import { marked } from 'marked'
@@ -42,6 +42,9 @@ const registrations = await sql<Registration[]>`
 		"id" ASC
 `
 
+const meetupInterval = (meetup && meetup.begin && meetup.end && { start: startOfDay(meetup.begin), end: endOfDay(meetup.end) }) || null
+const meetupDays = meetupInterval ? eachDayOfInterval(meetupInterval) : []
+
 const closeDate = getRegistrationCloseDate(meetup)
 const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
 const isPost = Astro.request.method.toUpperCase() === 'POST'
@@ -69,6 +72,7 @@ if (isSubmit && member) {
 	const formData = await Astro.request.formData()
 
 	const levels = new Map<number, { prevLevel: RegLevelType, nextLevel: RegLevelType }>()
+	const days = new Map<number, string[]>(memberRegs.map(reg => [reg.id, []]))
 
 	for (let [key, value] of formData.entries()) {
 		if (typeof value !== 'string') continue
@@ -85,46 +89,88 @@ if (isSubmit && member) {
 				}
 			}
 		}
+
+		const dayItem = meetupInterval && !item && /^days\[(\d+)\]$/.exec(key)
+		if (dayItem && days.size < 6) {
+			const [_, num] = dayItem
+			const id = Number(num)
+			if (/^\d\d\d\d-\d\d-\d\d$/.test(value)) {
+				const day = new Date(value)
+				if (isWithinInterval(day, meetupInterval)) {
+					const arr = days.get(id) ?? []
+					days.set(id, arr.concat(value))
+				}
+			}
+		}
 	}
 
-	if (levels.size === 0) {
+	if (levels.size === 0 && days.size === 0) {
 		success.add('no-level-to-update')
 	} else {
 		try {
-			const updates = (await sql.begin(sql => Array.from(levels.entries()).map(
-				([id, { prevLevel, nextLevel }]) => {
-					let fields: (
-						| { cancelled: null | Date }
-						| { confirmed: null | Date, cancelled: null | Date }
-						| { registered: Date, confirmed: null | Date, cancelled: null | Date }
-					) = { cancelled: null }
+			if (days.size > 0) {
+				const updates = (await sql.begin(sql => Array.from(days.entries()).map(
+					([id, days]) => sql<Registration[]>`
+						UPDATE registrations
+						SET "days" = ${days.length < meetupDays.length ? days.join(' ') : null}
+						WHERE "id" = ${id}
+						RETURNING *
+					`
+				))).flat()
 
-					if (prevLevel === 'added') {
-						fields = { registered: now, cancelled: null }
-					}
+				if (updates.length === 0) {
+					throw 'database-error'
+				}
 
-					if (nextLevel === 'registered') {
-						fields = { ...fields, confirmed: null }
-					} else if (nextLevel === 'confirmed') {
-						fields = { ...fields, confirmed: now }
-					} else if (nextLevel === 'cancelled') {
-						fields = { ...fields, cancelled: now }
-					}
-
-					return sql<Registration[]>`UPDATE registrations SET ${sql(fields)} WHERE "id" = ${id} RETURNING *`
+				updates.forEach(updated => {
+					const regIndex = registrations.findIndex(reg => reg.id === updated.id)
+					const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
+					registrations[regIndex] = updated
+					memberRegs[memberRegIndex] = updated
 				})
-			)).flat()
-
-			if (updates.length === 0) {
-				throw 'database-error'
 			}
 
-			updates.forEach(updated => {
-				const regIndex = registrations.findIndex(reg => reg.id === updated.id)
-				const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
-				registrations[regIndex] = updated
-				memberRegs[memberRegIndex] = updated
-			})
+			if (levels.size > 0) {
+				const updates = (await sql.begin(sql => Array.from(levels.entries()).map(
+					([id, { prevLevel, nextLevel }]) => {
+						let fields: (
+							| { cancelled: null | Date }
+							| { confirmed: null | Date, cancelled: null | Date }
+							| { registered: Date, confirmed: null | Date, cancelled: null | Date }
+						) = { cancelled: null }
+
+						if (prevLevel === 'added') {
+							fields = { registered: now, cancelled: null }
+						}
+
+						if (nextLevel === 'registered') {
+							fields = { ...fields, confirmed: null }
+						} else if (nextLevel === 'confirmed') {
+							fields = { ...fields, confirmed: now }
+						} else if (nextLevel === 'cancelled') {
+							fields = { ...fields, cancelled: now }
+						}
+
+						return sql<Registration[]>`
+							UPDATE registrations
+							SET ${sql(fields)}
+							WHERE "id" = ${id}
+							RETURNING *
+						`
+					})
+				)).flat()
+
+				if (updates.length === 0) {
+					throw 'database-error'
+				}
+
+				updates.forEach(updated => {
+					const regIndex = registrations.findIndex(reg => reg.id === updated.id)
+					const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
+					registrations[regIndex] = updated
+					memberRegs[memberRegIndex] = updated
+				})
+			}
 
 			success.add('level-update-success')
 		} catch (error) {
@@ -188,6 +234,19 @@ if (member || dialog != null) {
 				<dl>
 					{memberRegs.map(reg => {
 					const regLevel = getRegLevel(reg)
+
+					const regDates = reg.days && meetupInterval
+					? reg.days
+					.split(' ')
+					.filter(date => /^\d\d\d\d-\d\d-\d\d$/.test(date))
+					.map(date => new Date(date))
+					.filter(date => isWithinInterval(date, meetupInterval))
+					: []
+
+					function inRegDates(date: Date) {
+					return regDates.some(regDate => isSameDay(date, regDate))
+					}
+
 					return <div>
 						<dt>{reg.publicname}</dt>
 						<dd class="form-field">
@@ -206,6 +265,24 @@ if (member || dialog != null) {
 								</select>
 							</label>
 						</dd>
+						{meetupInterval && <dd class="form-field reg-days">
+							<span>Päivät jos osallistuu:</span><br />
+							{meetupDays.map(date => {
+
+							const ymd = format(date, 'yyyy-MM-dd' , opts)
+							const checked = regLevel !== 'cancelled' && (reg.days == null || inRegDates(date))
+
+							return <label class="daypick" title={format(date, 'EEEE d.M.yyyy' , opts)}>
+								<input type="checkbox" name={`days[${reg.id}]`} value={ymd} checked={checked}
+									value={ymd} aria-hidden="false" hidden />
+								<span class="daypick-check">
+									<Icon href="/icons/check.svg" />
+									{format(date, 'EEEEEE', opts)}
+								</span>
+							</label>
+
+							})}
+						</dd>}
 					</div>})}
 				</dl>
 				<p class="form-field participation-button">
@@ -219,6 +296,45 @@ if (member || dialog != null) {
 				varten:<br /><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></p>}
 			<p><a href={`/meetups/registration/${meetup.id}`}>Tarkasta ilmoittautumisen tiedot</a></p>
 			<style>
+				.daypick {
+					cursor: pointer;
+					user-select: none;
+				}
+
+				.daypick input:focus {
+					clip: rect(0, 0, 0, 0);
+					position: absolute;
+				}
+
+				.daypick input:focus-visible+.daypick-check {
+					outline: 3px solid var(--focus-color);
+					outline-offset: 3px;
+					position: relative;
+				}
+
+				.daypick-check {
+					border-radius: 0.25rem;
+					display: inline-block;
+					font-family: ui-monospace, monospace;
+					margin: 0.25rem 0.125rem;
+					padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+					text-transform: uppercase;
+				}
+
+				[type="checkbox"]:not(:checked)+.daypick-check {
+					--icon-stroke-color: var(--error-color);
+				}
+
+				[type="checkbox"]:not(:checked)+.daypick-check :global(svg) {
+					opacity: 0.25;
+				}
+
+				[type="checkbox"]:checked+.daypick-check {
+					--icon-stroke-color: var(--link-color);
+					background: white;
+					box-shadow: 0 0 0 2px var(--border-color);
+				}
+
 				.participated {
 					background: #f5f5f5;
 					border: thin solid var(--border-color);
@@ -240,21 +356,24 @@ if (member || dialog != null) {
 				.participated dl>div {
 					align-items: center;
 					display: flex;
-					flex-direction: row-reverse;
-					gap: 1rem;
-					justify-content: center;
+					flex-wrap: wrap;
+					gap: 0 1rem;
 				}
 
 				.participated dt {
 					font-weight: bold;
-					flex: 1 1 10rem;
+					flex: 0 1 10rem;
 					margin: 0;
 					padding: 0;
 				}
 
 				.participated dd {
 					margin: 0;
-					padding: 0;
+					padding: 0 0 1rem;
+				}
+
+				.reg-days {
+					flex-grow: 1;
 				}
 			</style>
 		</div> : isRegistrationOpen ? <p>
