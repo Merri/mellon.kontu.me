@@ -11,7 +11,11 @@ import type { Meetup, Organization, Place } from "$/types/db";
 
 const now = new Date()
 
-const upcomingMeetups = (await sql<Meetup[]>`SELECT * FROM meetups WHERE "end" >= ${getYmdUTC(now)} ORDER BY "end" desc, "begin" desc`).map(meetupToZonedTime)
+const upcomingMeetups = (await sql<Meetup[]>`
+	SELECT * FROM meetups
+	WHERE "end" >= ${getYmdUTC(now)}
+	ORDER BY "open" ASC NULLS LAST, "end" ASC NULLS LAST, "begin" ASC NULLS LAST
+`).map(meetupToZonedTime)
 
 const placeIds = new Set(upcomingMeetups.map(({ placeId }) => placeId))
 
