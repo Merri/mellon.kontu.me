@@ -162,7 +162,7 @@ if (meetup && place) {
 					updates.push({
 						id: person.id,
 						publicname: person.publicname || '',
-						age: person.age || null,
+						age: person.age ?? null,
 						info
 					})
 				} else {
@@ -170,7 +170,7 @@ if (meetup && place) {
 						meetupId,
 						memberId: member.id,
 						publicname: person.publicname || '',
-						age: person.age || null,
+						age: person.age ?? null,
 						info,
 						registered: now,
 						bankReference,
