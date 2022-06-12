@@ -2,7 +2,9 @@ import { isBefore, endOfDay, isSameDay, addMinutes, isSameYear } from 'date-fns'
 import { format as tzf } from 'date-fns-tz'
 import locale from 'date-fns/locale/fi/index.js'
 
-import type { Meetup } from '$/types/db'
+import type { Meetup, Member } from '$/types/db'
+
+import { asFinnishRefNumber } from './reference'
 
 interface MeetupDateOptions {
 	format: string
@@ -11,6 +13,19 @@ interface MeetupDateOptions {
 }
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
+
+export function getMeetupBankReference({ meetup, member, now }: { meetup: Meetup; member: Member; now: Date }) {
+	if (meetup.isFree) return null
+
+	if (meetup.baseCreditorReference) {
+		return asFinnishRefNumber(BigInt(meetup.baseCreditorReference) + BigInt(member.id))
+	}
+
+	return asFinnishRefNumber(
+		((BigInt(300000) + BigInt(meetup.id % 1000)) * BigInt(100000) + BigInt(member.id % 100000)) * BigInt(100) +
+			BigInt(now.getFullYear() % 100)
+	)
+}
 
 /** Get registration closing date */
 export function getRegistrationCloseDate(meetup?: Meetup): Date | null {

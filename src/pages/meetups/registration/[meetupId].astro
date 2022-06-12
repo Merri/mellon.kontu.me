@@ -1,18 +1,23 @@
 ---
-import { isBefore } from "date-fns";
+import { differenceInYears, isBefore } from 'date-fns'
+import JWT from 'jsonwebtoken'
+import { marked } from 'marked'
 
-import BaseHead from "$/components/BaseHead.astro";
-import { FamilyMembers } from "$/components/FamilyMembers";
-import Icon from "$/components/Icon.astro";
-import PageHeader from "$/components/PageHeader.astro";
-import PageFooter from "$/components/PageFooter.astro";
-import { getMemberIdFromCookie } from "$/lib/auth";
-import { meetupToZonedTime } from "$/lib/date";
-import { sql } from "$/lib/db";
-import { getRegistrationCloseDate } from "$/lib/meetup";
-import ErrorPage from "$/pages/404.astro";
-import type { Meetup, Member, Place, Registration } from "$/types/db";
-import type { FamilyMember } from "$/types/registrations";
+import BaseHead from '$/components/BaseHead.astro'
+import { FamilyMembers } from '$/components/FamilyMembers'
+import Icon from '$/components/Icon.astro'
+import PageHeader from '$/components/PageHeader.astro'
+import PageFooter from '$/components/PageFooter.astro'
+import { getMemberIdFromCookie } from '$/lib/auth'
+import { getLogger } from '$/lib/bugsnag'
+import { meetupToZonedTime } from '$/lib/date'
+import { sql } from '$/lib/db'
+import { getMemberEmailField, sendMail } from '$/lib/email'
+import { getMeetupBankReference, getRegistrationCloseDate } from '$/lib/meetup'
+import { getJoinText } from '$/lib/registerToMeetup'
+import ErrorPage from '$/pages/404.astro'
+import type { Meetup, Member, Place, Registration } from '$/types/db'
+import type { FamilyMember } from '$/types/registrations'
 
 const now = new Date()
 const meetupId = Math.round(Number(Astro.params.meetupId))
@@ -24,14 +29,18 @@ const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
 	FROM meetups
 	WHERE id = ${meetupId}
 `).map(meetupToZonedTime).pop()
-const registrations: Registration[] = meetup && member ? (await sql<Registration[]>`
+
+const closeDate = getRegistrationCloseDate(meetup)
+const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+
+const registrations: Registration[] = isRegistrationOpen && member ? await sql<Registration[]>`
 	SELECT *
 	FROM registrations
 	WHERE "meetupId" = ${meetup.id} AND "memberId" = ${member.id}
-`) : []
+` : []
 const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
 
-const isSubmit = Astro.request.method.toUpperCase() === 'POST'
+const isSubmit = isRegistrationOpen && Astro.request.method.toUpperCase() === 'POST'
 const isUpdate = registrations.length > 0
 
 const hasAllergies = member && meetup ? meetup.enableAllergyFields : false
@@ -39,61 +48,221 @@ const hasFamilyMembers = member && meetup ? meetup.enableFamilyMembers : false
 const hasOvernight = meetup ? meetup.enableCampingMembers || meetup.enableDailyVisitors : false
 const hasSauna = place && meetup ? place.hasSauna && meetup.enableSaunaOption : false
 
-const formData = isSubmit ? await Astro.request.formData() : null
-const _email = !member && formData?.get('email') || undefined
+/** Only relevant for person who is not logged in. */
+let email = ''
 
+/** Data that will be passed to the HTML for render. */
 const persons: FamilyMember[] = []
+/** Should be empty after processing, otherwise we have an unexpected mismatch. We should never remove from database. */
+const idValidation = new Set<number>()
 
-if (formData) for (let [key, value] of formData.entries()) {
-	if (typeof value !== 'string') continue
+const errors: Set<('person' | 'publicname' | 'age' | 'name')> = new Set()
+type DialogType = 'database-failure' | 'invalid-removal-request' | 'no-data' | 'profile-data-missing' | ''
+let dialog: DialogType = ''
 
-	const item = /^person\[(\d)\]\[(.*)\]$/.exec(key)
-	if (item && persons.length < 6) {
-		const [_, index, field] = item
-		const i = Number(index)
-		if (persons[i] == null) persons[Number(index)] = {}
-		if (field === 'age' || field === 'id') {
-			if (value) persons[i][field] = parseInt(value, 10) || 0
-		} else {
-			// @ts-ignore
-			persons[i][field] = value
+if (meetup && place) {
+	if (isSubmit) {
+		registrations.forEach(({ id }) => idValidation.add(id))
+
+		const formData = await Astro.request.formData()
+
+		for (let [key, value] of formData.entries()) {
+			if (typeof value !== 'string') continue
+
+			const item = /^person\[(\d)\]\[(.*)\]$/.exec(key)
+			if (item && persons.length < 6) {
+				const [_, index, field] = item
+				const i = Number(index)
+				if (persons[i] == null) persons[Number(index)] = {}
+				if (field === 'age' || field === 'id') {
+					if (value) persons[i][field] = parseInt(value.trim(), 10) || 0
+				} else {
+					// @ts-ignore
+					persons[i][field] = value.trim()
+				}
+			}
 		}
+
+		persons.forEach((person) => {
+			if (person.id != null) {
+				if (idValidation.has(person.id)) {
+					idValidation.delete(person.id)
+				} else {
+					delete person.id
+				}
+			}
+			if (!hasAllergies) delete person.allergies
+			if (!member) delete person.info
+			if (!hasOvernight) delete person.overnight
+			if (!hasSauna) delete person.sauna
+		})
+
+		try {
+			if (persons.length === 0) throw 'no-data'
+
+			if (!member) {
+				const _email = (!member && formData?.get('email')) || undefined
+				if (typeof _email === 'string') email = _email.trim()
+
+				/** @todo Send mail, handle creation of new member / detect existing user, let them participate the meetup. */
+				throw ''
+			}
+
+			if (idValidation.size) throw 'invalid-removal-request'
+
+			if (member.publicname == null || member.dob == null) {
+				throw 'profile-data-missing'
+			}
+
+			persons[0].publicname = member.publicname
+			persons[0].age = differenceInYears(now, member.dob)
+			persons[0].name = member.fullname || ''
+
+			persons.forEach(person => {
+				if (!person) errors.add('person')
+				if (!person.publicname) errors.add('publicname')
+				if (person.age == null || person.age < 0 || Number.isNaN(person.age)) errors.add('age')
+				if (!person.name) errors.add('name')
+			})
+
+			if (errors.size) throw errors
+
+			const additions: {
+				meetupId: number
+				memberId: number
+				publicname: string
+				age: number | null
+				info: string
+				registered: Date
+				bankReference: string | null
+			}[] = []
+
+			const updates: {
+				id: number
+				publicname: string
+				age: number | null
+				info: string
+			}[] = []
+
+			const bankReference = getMeetupBankReference({ meetup, member, now })
+
+			persons.forEach(person => {
+				const info = JWT.sign(
+					{
+						allergies: person.allergies,
+						diet: person.diet,
+						info: person.info,
+						name: person.name,
+						overnight: person.overnight,
+						sauna: person.sauna,
+					},
+					import.meta.env.JWT_DATABASE,
+					{ algorithm: 'HS256' }
+				)
+
+				if (person.id != null) {
+					updates.push({
+						id: person.id,
+						publicname: person.publicname || '',
+						age: person.age || null,
+						info
+					})
+				} else {
+					additions.push({
+						meetupId,
+						memberId: member.id,
+						publicname: person.publicname || '',
+						age: person.age || null,
+						info,
+						registered: now,
+						bankReference,
+					})
+				}
+
+			})
+
+			if (additions.length) {
+				const rows = await sql<Registration[]>`
+				INSERT INTO registrations ${sql(additions)}
+				RETURNING *`
+
+				if (rows.length === 0) {
+					throw 'database-failure'
+				}
+			}
+
+			if (updates.length) {
+				const rows = await sql.begin(sql => updates.map(update => sql`
+					UPDATE registrations
+					SET ${sql(update, 'publicname', 'age', 'info')}
+					WHERE id = ${update.id}
+					RETURNING *
+				`))
+
+				if (rows.length === 0) {
+					throw 'database-failure'
+				}
+			}
+
+			return Astro.redirect(`/meetups/view/${meetupId}?dialog=${updates.length ? 'registration-updated' : 'registration-success'}`)
+
+			/*
+			const [{ name: organizerName }] = (meetup.organizer === 'member' &&
+				(await sql<
+					{ name: string }[]
+					>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`)) ||
+				(meetup.organizer === 'organization' &&
+					meetup.organizationId &&
+					(await sql<
+						{ name: string }[]
+						>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`)) || [
+					{ name: undefined },
+				]
+
+			const text = getJoinText({ bankReference, meetupId, organizerName, url: Astro.request.url })
+
+			sendMail({
+				to: getMemberEmailField(member),
+				subject: `Ilmoittautuminen vastaanotettu! (${meetup.title})`,
+				text,
+				html: marked.parse(text),
+			})
+			*/
+		} catch (error) {
+			if (typeof error === 'string') {
+				dialog = error as typeof dialog
+			} else if (error instanceof Error) {
+				getLogger().notify(error)
+				dialog = 'database-failure'
+			}
+		}
+	} else {
+		registrations.forEach((registration) => {
+			let payload = registration.info
+				? JWT.verify(registration.info, import.meta.env.JWT_DATABASE, { algorithms: ['HS256'] })
+				: null
+
+			if (typeof payload === 'string') payload = null
+
+			persons.push({
+				...payload,
+				id: registration.id,
+				publicname: registration.publicname,
+				age: registration.age,
+			})
+		})
 	}
 }
 
-const validIds = new Set(registrations.map(({ id }) => id))
-
-persons.forEach(person => {
-	if (person.id != null) {
-		if (validIds.has(person.id)) {
-			validIds.delete(person.id)
-		} else {
-			delete person.id
-		}
-	}
-	if (!hasAllergies) delete person.allergies
-	if (!member) delete person.info
-	if (!hasOvernight) delete person.overnight
-	if (!hasSauna) delete person.sauna
-})
-
-console.log('persons', persons, 'formData.entries', Array.from(formData?.entries() ?? []))
-
 const person = persons.shift() || {}
-
-// Participant themselves
-const email = typeof _email === 'string' ? _email : ''
-const diet = person.diet || ''
-const allergies = person.allergies || ''
-const sauna = person.sauna || ''
-const info = person.info || ''
-const overnight = person.overnight || ''
-
-// Participant's family members
 const familyMembers: FamilyMember[] = hasFamilyMembers ? persons : []
 
-const closeDate = getRegistrationCloseDate(meetup)
-const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+if (member) {
+	Astro.response.headers.set('Cache-Control', 'no-cache')
+	Astro.response.headers.set('X-Robots-Tag', 'noindex')
+} else if (!isSubmit) {
+	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
+}
 
 ---
 
@@ -107,6 +276,19 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 
 	{isRegistrationOpen ?
 	<main id="main">
+		{errors.has('person') && <div>Odottamaton virhe: ilmoittautujan tiedot puuttuivat kokonaan!</div>}
+		{errors.has('publicname') && <div>Tarkista että kaikilla ilmoittautujilla on julkinen nimi.</div>}
+		{errors.has('name') && <div>Tarkista että olet antanut kaikille ilmoittautujille nimen. Varmista että olet
+			ilmoittanut nimesi <a href="/profile">tiedoissasi</a>.</div>}
+		{errors.has('age') && <div>Tarkista että kaikille ilmoittautujille on annettu ikä.</div>}
+		{dialog === 'database-failure' && <div>Odottamaton virhe: ilmoittautumisen lisääminen tietokantaan epäonnistui!
+		</div> }
+		{dialog === 'no-data' && <div>Odottamaton virhe: ei ilmoittautuneita!</div>}
+		{dialog === 'invalid-removal-request' && <div>Annettujen tietojen perusteella ilmoittautuneita pitäisi poistaa.
+			Tämä ei ole sallittua, eikä tätä pitäisi tapahtua. <a href="mailto:mellon@kontu.me">Ilmoita kehittäjälle</a>
+			mikäli sait tämän virheilmoituksen normaalikäytössä!</div>}
+		{dialog === 'profile-data-missing' && <div>Tiedoistasi puuttuu olennaisia tietoja kuten julkinen nimi tai
+			syntymäpäivä. <a href="/profile">Käy täyttämässä puuttuvat tiedot</a>.</div> }
 		<p>
 			<a class="button" href={`/meetups/view/${meetupId}`}>
 				<Icon href="/icons/arrow-left.svg" />
@@ -126,10 +308,12 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<Icon href="/icons/user-1.svg" size={2.1875} /> Omat tiedot
 			</h2>
 			{!member && <p class="form-field">
+				<a href="/profile">Kirjaudu ensin sisään, kiitos!</a> (Tuki ilmoittautumiselle ennen kirjautumista
+				lisätään myöhemmin.)<br /><br />
 				<label>
 					Sähköpostiosoitteesi:
 					<input aria-describedby="description-email" type="email" name="email" autocomplete="email"
-						value={email} required />
+						value={email} required disabled />
 				</label>
 				<small id="description-email">Saat viestin jolla vahvistaa ilmoittautumisesi.</small><br />
 				Tai vaihtoehtoisesti voit myös <a href="/profile">kirjautua Melloniin</a> ja ilmoittautua vasta sitten.
@@ -143,11 +327,11 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 					<label for="sauna">
 						Saunavuorot:
 						<select id="sauna" name="person[0][sauna]">
-							<option value="any" selected={sauna==='any' }>Sekavuoro</option>
-							<option value="male" selected={sauna==='male' }>Miestenvuoro</option>
-							<option value="female" selected={sauna==='female' }>Naistenvuoro</option>
-							<option value="family" selected={sauna==='family' }>Oma vuoro / perhevuoro</option>
-							<option value="none" selected={sauna==='none' }>En sauno</option>
+							<option value="any" selected={person.sauna==='any' }>Sekavuoro</option>
+							<option value="male" selected={person.sauna==='male' }>Miestenvuoro</option>
+							<option value="female" selected={person.sauna==='female' }>Naistenvuoro</option>
+							<option value="family" selected={person.sauna==='family' }>Oma vuoro / perhevuoro</option>
+							<option value="none" selected={person.sauna==='none' }>En sauno</option>
 						</select>
 					</label>
 					<small>Toive järjestettävistä saunavuoroista.</small>
@@ -157,11 +341,11 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<label for="overnight">
 					Yöpyminen:
 					<select id="overnight" name="person[0][overnight]">
-						<option value="bed" selected={overnight==='bed' }>Nukun sängyssä</option>
-						{meetup.enableCampingMembers && <option value="camping" selected={overnight==='camping' }>Nukun
-							omassa teltassa</option>}
-						{meetup.enableDailyVisitors && <option value="dailyVisitor" selected={overnight==='dailyVisitor'
-							}>Käyn ainoastaan päivävierailulla
+						<option value="bed" selected={person.overnight==='bed' }>Nukun sängyssä</option>
+						{meetup.enableCampingMembers && <option value="camping" selected={person.overnight==='camping'
+							}>Nukun omassa teltassa</option>}
+						{meetup.enableDailyVisitors && <option value="dailyVisitor"
+							selected={person.overnight==='dailyVisitor' }>Käyn ainoastaan päivävierailulla
 						</option>}
 					</select>
 				</label>
@@ -175,13 +359,17 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<label for="diet">
 					Ruokavalio:
 					<select id="diet" name="person[0][diet]" autocomplete="off">
-						<option value="all" selected={diet==='all' }>Kaikki käy</option>
-						<option value="semivegetarian" selected={diet==='semivegetarian' }>Semivegetaarinen</option>
-						<option value="lacto-ovarian" selected={diet==='lacto-ovarian' }>Lakto-ovovegetaarinen</option>
-						<option value="lactovegetarian" selected={diet==='lactovegetarian' }>Laktovegetaarinen</option>
-						<option value="pescovegetarian" selected={diet==='pescovegetarian' }>Pescovegetaarinen</option>
-						<option value="vegan" selected={diet==='vegan' }>Vegaani</option>
-						<option value="none" selected={diet==='none' }>En osallistu yhteisruokailuihin</option>
+						<option value="all" selected={person.diet==='all' }>Kaikki käy</option>
+						<option value="semivegetarian" selected={person.diet==='semivegetarian' }>Semivegetaarinen
+						</option>
+						<option value="lacto-ovarian" selected={person.diet==='lacto-ovarian' }>Lakto-ovovegetaarinen
+						</option>
+						<option value="lactovegetarian" selected={person.diet==='lactovegetarian' }>Laktovegetaarinen
+						</option>
+						<option value="pescovegetarian" selected={person.diet==='pescovegetarian' }>Pescovegetaarinen
+						</option>
+						<option value="vegan" selected={person.diet==='vegan' }>Vegaani</option>
+						<option value="none" selected={person.diet==='none' }>En osallistu yhteisruokailuihin</option>
 					</select>
 				</label>
 				<small>Tämä vaikuttaa tapahtuman järjestäjän hankkimiin ruokiin ja määriin.</small>
@@ -191,7 +379,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				<p class="form-field">
 					<label>
 						Allergiat:
-						<textarea name="person[0][allergies]" autocomplete="off" cols={40}>{allergies}</textarea>
+						<textarea name="person[0][allergies]" autocomplete="off" cols={40}>{person.allergies}</textarea>
 					</label>
 					<small>Tämä auttaa järjestäjää ohjeistamaan muita osallistujia jättämään tuomatta vakavia
 						allergioiden aiheuttajia, sekä vaikuttaa yhteisruokailujen ruoka-aineisiin.</small>
@@ -201,10 +389,11 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 			<p class="form-field">
 				<label>
 					Lisätietoja:
-					<textarea name="person[0][info]" cols={40}>{info}</textarea>
+					<textarea name="person[0][info]" cols={40}>{person.info}</textarea>
 				</label>
-				<small>Voit kirjoittaa tähän lyhyesti tarkennuksia aiempiin kohtiin. Älä jätä tähän kenttään kysymyksiä
-					vaan kysy ne suoraan järjestäjältä.</small>
+				<small>Onko sinulla sairauksia joista järjestäjien olisi hyvä tietää? Voit myös kirjoittaa tähän
+					lyhyesti tarkennuksia aiempiin kohtiin.<br />Ethän jätä tähän kenttään kysymyksiä vaan kysy ne
+					suoraan järjestäjältä.</small>
 			</p> : <p>Kirjaudu sisään jos sinun tarvitsee ilmoittaa tarkempia tietoja.</p>}
 			{meetup.enableFamilyMembers && <>
 				{member ? <div>
@@ -237,7 +426,7 @@ const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore
 				</div> : <p>Haluatko samalla ilmoittaa perheenjäseniä? Kirjaudu ensin sisälle!</p>}
 			</>}
 			<p>
-				<button type="submit">
+				<button type="submit" disabled={!member}>
 					<Icon href={isUpdate ? '/icons/check.svg' : '/icons/send-2.svg' } />
 					{isUpdate ? 'Tallenna ilmoittautuminen' : 'Lähetä ilmoittautuminen'}
 				</button>

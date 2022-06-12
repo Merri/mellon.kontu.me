@@ -43,14 +43,22 @@ export function FamilyMembers(props: FamilyMemberProps) {
 									type="text"
 									name={`person[${index() + 1}][publicname]`}
 									value={member.publicname || ''}
+									required
 								/>
 							</label>
+							<small>Pakollinen tieto.</small>
 						</p>
 						<p class="form-field">
 							<label>
 								Nimi:
-								<input type="text" name={`person[${index() + 1}][name]`} value={member.name || ''} />
+								<input
+									type="text"
+									name={`person[${index() + 1}][name]`}
+									value={member.name || ''}
+									required
+								/>
 							</label>
+							<small>Pakollinen tieto.</small>
 						</p>
 						<p class="form-field">
 							<label>
@@ -61,6 +69,7 @@ export function FamilyMembers(props: FamilyMemberProps) {
 									max={125}
 									name={`person[${index() + 1}][age]`}
 									value={member.age ?? 9}
+									required
 								/>
 							</label>
 							<small>Ikä tapahtuman alkamispäivänä.</small>

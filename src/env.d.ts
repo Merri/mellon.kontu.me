@@ -8,6 +8,7 @@ interface ImportMetaEnv {
 	readonly POSTGRES_PW: string
 
 	readonly BUGSNAG_API_KEY: string
+	readonly JWT_DATABASE: string
 	readonly JWT_SECRET: string
 	readonly TOMTOM_API_KEY: string
 

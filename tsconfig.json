@@ -7,6 +7,7 @@
 			"$/*": ["src/*"],
 			"$layouts/*": ["src/layouts/*"]
 		},
+		"target": "es2020",
 		"esModuleInterop": true,
 		"jsx": "preserve",
 		"jsxImportSource": "solid-js",

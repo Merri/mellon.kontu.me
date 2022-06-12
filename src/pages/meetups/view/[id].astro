@@ -1,21 +1,29 @@
 ---
-import { marked } from 'marked'
-import BaseHead from "$/components/BaseHead.astro";
 import { isBefore, endOfDay, isSameDay, addMinutes } from 'date-fns'
-
-import { sql } from '$/lib/db'
-import type { Meetup, Place, Registration } from "$/types/db";
-import PageHeader from "$/components/PageHeader.astro";
-import { meetupToZonedTime } from '$/lib/date';
-import { format } from 'date-fns-tz';
 import locale from 'date-fns/locale/fi/index.js'
+import { format } from 'date-fns-tz';
+import { marked } from 'marked'
+
+import BaseHead from "$/components/BaseHead.astro";
+import Icon from '$/components/Icon.astro';
 import PageFooter from '$/components/PageFooter.astro';
+import PageHeader from "$/components/PageHeader.astro";
+import { getMemberIdFromCookie } from '$/lib/auth';
+import { getLogger } from '$/lib/bugsnag';
+import { meetupToZonedTime } from '$/lib/date';
+import { sql } from '$/lib/db'
+import { getRegistrationCloseDate } from '$/lib/meetup';
+import { formatPrettyReference } from '$/lib/reference';
 import ErrorPage from '$/pages/404.astro'
+import type { Meetup, Member, Place, Registration } from "$/types/db";
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
+const now = new Date()
 const id = Math.round(Number(Astro.params.id))
 
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
 const meetup = (id > 0 || undefined) && (await sql<Meetup[]>`SELECT * FROM meetups WHERE id = ${id}`).map(meetupToZonedTime).pop()
 
 const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
@@ -24,17 +32,131 @@ const [{ name: organizerName }] =
 	(meetup?.organizer === 'organization' && meetup.organizationId && await sql<{ name: string }[]>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`) ||
 	[{ name: undefined }]
 
-const registrations = await sql<Registration[]>`SELECT * FROM registrations WHERE "meetupId" = ${id}`
+const registrations = await sql<Registration[]>`
+	SELECT * FROM registrations
+	WHERE "meetupId" = ${id}
+	ORDER BY "isOrganizer" DESC,
+		"cancelled" ASC NULLS FIRST,
+		"confirmed" ASC NULLS LAST,
+		"registered" ASC NULLS LAST
+`
 
-const registrationOpens = meetup && meetup.open != null && isBefore(new Date(), meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
+const closeDate = getRegistrationCloseDate(meetup)
+const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+const isPost = Astro.request.method.toUpperCase() === 'POST'
+const isSubmit = isRegistrationOpen && isPost
+
+const memberRegs = isRegistrationOpen && member ? registrations.filter(registration => registration.memberId === member.id) : []
+
+type RegLevelType = 'organizer' | 'cancelled' | 'confirmed' | 'registered' | 'added'
+
+function getRegLevel(reg: Registration): RegLevelType {
+	if (reg.isOrganizer) return 'organizer'
+	if (reg.cancelled != null) return 'cancelled'
+	if (reg.confirmed != null) return 'confirmed'
+	if (reg.registered != null) return 'registered'
+	return 'added'
+}
+
+type ErrorType = 'database-error'
+type SuccessType = 'level-update-success' | 'no-level-to-update'
+
+const errors = new Set<ErrorType>()
+const success = new Set<SuccessType>()
+
+if (isSubmit && member) {
+	const formData = await Astro.request.formData()
+
+	const levels = new Map<number, { prevLevel: RegLevelType, nextLevel: RegLevelType }>()
+
+	for (let [key, value] of formData.entries()) {
+		if (typeof value !== 'string') continue
+
+		const item = /^level\[(\d+)\]$/.exec(key)
+		if (item && levels.size < 6) {
+			const [_, num] = item
+			const id = Number(num)
+			const oldReg = memberRegs.find((reg) => reg.id === id)
+			if (oldReg) {
+				if (value === 'cancelled' || value === 'confirmed' || value === 'registered') {
+					const oldLevel = getRegLevel(oldReg)
+					if (oldLevel !== value) levels.set(id, { prevLevel: oldLevel, nextLevel: value })
+				}
+			}
+		}
+	}
+
+	if (levels.size === 0) {
+		success.add('no-level-to-update')
+	} else {
+		try {
+			const updates = (await sql.begin(sql => Array.from(levels.entries()).map(
+				([id, { prevLevel, nextLevel }]) => {
+					let fields: (
+						| { cancelled: null | Date }
+						| { confirmed: null | Date, cancelled: null | Date }
+						| { registered: Date, confirmed: null | Date, cancelled: null | Date }
+					) = { cancelled: null }
+
+					if (prevLevel === 'added') {
+						fields = { registered: now, cancelled: null }
+					}
+
+					if (nextLevel === 'registered') {
+						fields = { ...fields, confirmed: null }
+					} else if (nextLevel === 'confirmed') {
+						fields = { ...fields, confirmed: now }
+					} else if (nextLevel === 'cancelled') {
+						fields = { ...fields, cancelled: now }
+					}
+
+					return sql<Registration[]>`UPDATE registrations SET ${sql(fields)} WHERE "id" = ${id} RETURNING *`
+				})
+			)).flat()
+
+			if (updates.length === 0) {
+				throw 'database-error'
+			}
+
+			updates.forEach(updated => {
+				const regIndex = registrations.findIndex(reg => reg.id === updated.id)
+				const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
+				registrations[regIndex] = updated
+				memberRegs[memberRegIndex] = updated
+			})
+
+			success.add('level-update-success')
+		} catch (error) {
+			if (typeof error === 'string') {
+				errors.add(error as ErrorType)
+			} else if (error instanceof Error) {
+				getLogger().notify(error)
+				errors.add('database-error')
+			}
+		}
+	}
+}
+
+const registrationOpens = meetup && meetup.open != null && isBefore(now, meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
 const registrationCloseDate = meetup && meetup.begin ? meetup.end ? isSameDay(meetup.begin, meetup.end) ? addMinutes(meetup.begin, -5) : endOfDay(meetup.begin) : meetup.begin : null
-const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(new Date(), registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
+const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(now, registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
 
-const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, new Date()))
-const textRegister = meetupWasInThePast ? 'Ilmoittautui' : 'Ilmoittautunut'
+const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, now))
+const textRegister = meetupWasInThePast ? 'Saattoi osallistua' : 'Vahvistamatta'
 const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Osallistumassa'
-const textCancel = meetupWasInThePast ? 'Perui' : 'Perunut'
+const textCancel = meetupWasInThePast ? 'Ei osallistunut' : 'Perunut'
 const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
+
+const dialog = new URL(Astro.request.url).searchParams.get('dialog')
+
+if (member) {
+	if (!isPost) Astro.response.headers.set('Cache-Control', 'private, max-age=30')
+	Astro.response.headers.set('X-Robots-Tag', 'noindex')
+} else if (isRegistrationOpen) {
+	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
+} else {
+	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
+}
 
 ---
 
@@ -47,8 +169,95 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 <body>
 	<PageHeader />
 	<main id="main">
+		{success.has('level-update-success') && <div>Osallistuminen päivitetty!</div>}
+		{success.has('no-level-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
+		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut!</div>}
+		{dialog === 'registration-success' && <div>Ilmoittautumisesi on otettu vastaan!</div>}
+		{dialog === 'registration-updated' && <div>Ilmoittautumisesi päivitettiin!</div>}
 		<h1 style="margin-bottom:0">{meetup.title}</h1>
 		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
+		{memberRegs.length > 0 ? <div class="participated">
+			<h2>Olet ilmoittautunut tähän tapahtumaan!</h2>
+			<p>Voit päivittää tässä osallistumisesi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
+			<form action="" method="POST">
+				<dl>
+					{memberRegs.map(reg => {
+					const regLevel = getRegLevel(reg)
+					return <div>
+						<dt>{reg.publicname}</dt>
+						<dd class="form-field">
+							<label>
+								Osallistuminen:
+								<select name={`level[${reg.id}]`}>
+									<option value="registered" selected={regLevel==='registered' }>
+										Ei vahvistettu
+									</option>
+									<option value="confirmed" selected={regLevel==='confirmed' }>
+										Osallistuu
+									</option>
+									<option value="cancelled" selected={regLevel==='cancelled' }>
+										Ei osallistu
+									</option>
+								</select>
+							</label>
+						</dd>
+					</div>})}
+				</dl>
+				<p class="form-field participation-button">
+					<button type="submit" class="button-alt">
+						<Icon href="/icons/refresh.svg" />
+						Päivitä osallistuminen
+					</button>
+				</p>
+			</form>
+			{memberRegs[0].bankReference && <p>Viitenumero miitin maksamista
+				varten:<br /><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></p>}
+			<p><a href={`/meetups/registration/${meetup.id}`}>Tarkasta ilmoittautumisen tiedot</a></p>
+			<style>
+				.participated {
+					background: #f5f5f5;
+					border: thin solid var(--border-color);
+					border-radius: 1rem;
+					margin: 2rem 0;
+					padding: 0 1.5rem;
+				}
+
+				.participation-button {
+					text-align: right;
+				}
+
+				.participated dl {
+					border-bottom: 3px double var(--border-color);
+					border-top: 3px double var(--border-color);
+					padding: 1rem 0;
+				}
+
+				.participated dl>div {
+					align-items: center;
+					display: flex;
+					flex-direction: row-reverse;
+					gap: 1rem;
+					justify-content: center;
+				}
+
+				.participated dt {
+					font-weight: bold;
+					flex: 1 1 10rem;
+					margin: 0;
+					padding: 0;
+				}
+
+				.participated dd {
+					margin: 0;
+					padding: 0;
+				}
+			</style>
+		</div> : isRegistrationOpen ? <p>
+			<a class="button" href={`/meetups/registration/${meetup.id}`}>
+				<Icon href="/icons/calendar.svg" />
+				Ilmoittaudu tähän tapahtumaan
+			</a>
+		</p> : null}
 		{!!meetup.description &&
 		<div set:html={marked(meetup.description)} />}
 		<h2>Muita yleisiä tietoja</h2>
@@ -88,18 +297,20 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 					<tr>
 						<th>#</th>
 						<th>Nimimerkki / julkinen nimi</th>
-						<th>Ilmoittautumisen tila</th>
+						<th>Osallistuminen</th>
 					</tr>
 				</thead>
 				<tbody>
 					{registrations.map((registration, index) => <tr>
 						<td>{index + 1}</td>
 						<td>{registration.publicname}</td>
-						<td>{(registration.cancelled && textCancel) || (registration.confirmed && textConfirm) ||
-							(registration.registered && textRegister) || textAdded}</td>
+						<td>{registration.isOrganizer && 'Järjestäjä'} || {(registration.cancelled && textCancel) ||
+							(registration.confirmed && textConfirm) || (registration.registered && textRegister) ||
+							textAdded}</td>
 					</tr>)}
 				</tbody>
 			</table>
+			<p>Ilmoittautuneiden järjestys riippuu siitä milloin he ovat vahvistaneet osallistuvansa.</p>
 			<style>
 				table {
 					--odd-cell-color: #f5f5f5;
