@@ -304,7 +304,7 @@ if (member) {
 					{registrations.map((registration, index) => <tr>
 						<td>{index + 1}</td>
 						<td>{registration.publicname}</td>
-						<td>{registration.isOrganizer && 'Järjestäjä'} || {(registration.cancelled && textCancel) ||
+						<td>{registration.isOrganizer && 'Järjestäjä' || (registration.cancelled && textCancel) ||
 							(registration.confirmed && textConfirm) || (registration.registered && textRegister) ||
 							textAdded}</td>
 					</tr>)}
