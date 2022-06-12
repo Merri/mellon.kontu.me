@@ -38,7 +38,8 @@ const registrations = await sql<Registration[]>`
 	ORDER BY "isOrganizer" DESC,
 		"cancelled" ASC NULLS FIRST,
 		"confirmed" ASC NULLS LAST,
-		"registered" ASC NULLS LAST
+		"registered" ASC NULLS LAST,
+		"id" ASC
 `
 
 const closeDate = getRegistrationCloseDate(meetup)

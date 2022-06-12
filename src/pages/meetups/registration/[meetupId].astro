@@ -34,6 +34,7 @@ const registrations: Registration[] = isRegistrationOpen && member ? await sql<R
 	SELECT *
 	FROM registrations
 	WHERE "meetupId" = ${meetup.id} AND "memberId" = ${member.id}
+	ORDER BY id ASC
 ` : []
 const place = meetup && (await sql<Place[]>`SELECT * FROM places WHERE id = ${meetup.placeId}`).pop()
 
