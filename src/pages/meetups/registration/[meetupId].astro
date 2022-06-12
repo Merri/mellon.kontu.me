@@ -257,6 +257,8 @@ const familyMembers: FamilyMember[] = hasFamilyMembers ? persons : []
 if (member) {
 	Astro.response.headers.set('Cache-Control', 'no-cache')
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
+} else if (isRegistrationOpen) {
+	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
 } else if (!isSubmit) {
 	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
 }
