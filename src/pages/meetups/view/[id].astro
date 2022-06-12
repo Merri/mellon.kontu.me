@@ -150,11 +150,15 @@ const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 
 const dialog = new URL(Astro.request.url).searchParams.get('dialog')
 
-if (member) {
-	if (!isPost) Astro.response.headers.set('Cache-Control', 'private, max-age=30')
+if (member || dialog != null) {
+	if (!isPost) {
+		Astro.response.headers.set('Cache-Control', 'private, max-age=0')
+	} else {
+		Astro.response.headers.set('Cache-Control', 'no-cache')
+	}
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
 } else if (isRegistrationOpen) {
-	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
+	Astro.response.headers.set('Cache-Control', 'public, max-age=0')
 } else {
 	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
 }
@@ -180,7 +184,7 @@ if (member) {
 		{memberRegs.length > 0 ? <div class="participated">
 			<h2>Olet ilmoittautunut tähän tapahtumaan!</h2>
 			<p>Voit päivittää tässä osallistumisesi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
-			<form action="" method="POST">
+			<form action={`/meetups/view/${meetup.id}`} method="POST">
 				<dl>
 					{memberRegs.map(reg => {
 					const regLevel = getRegLevel(reg)
