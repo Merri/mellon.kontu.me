@@ -4,12 +4,13 @@ import Fellowship from "$/components/Fellowship.astro";
 import Icon from "$/components/Icon.astro";
 import PageFooter from '$/components/PageFooter.astro';
 import PageHeader from "$/components/PageHeader.astro";
-import { getYmdUTC, meetupToZonedTime } from '$/lib/date';
+import { getYmdUTC, meetupToZonedTime, toZonedTime } from '$/lib/date';
 import { sql } from "$/lib/db";
 import { getTextMeetupDateRange, getTextRegistrationClose, getTextRegistrationOpen } from '$/lib/meetup';
 import type { Meetup, Organization, Place } from "$/types/db";
 
 const now = new Date()
+const nowFinnish = toZonedTime(new Date())
 
 const upcomingMeetups = (await sql<Meetup[]>`
 	SELECT * FROM meetups
@@ -49,8 +50,8 @@ organizations.forEach(organization => {
 		<h2>Tulevat miitit</h2>
 		{upcomingMeetups.length > 0 ? <dl>
 			{upcomingMeetups.map(meetup => {
-			const willOpen = getTextRegistrationOpen({ format: `EEEEEE d.M.Y 'klo' H:mm`, now, meetup })
-			const willClose = getTextRegistrationClose({ format: `EEEEEE d.M.Y 'klo' H:mm`, now, meetup })
+			const willOpen = getTextRegistrationOpen({ format: `EEEEEE d.M.Y 'klo' H:mm`, now: nowFinnish, meetup })
+			const willClose = getTextRegistrationClose({ format: `EEEEEE d.M.Y 'klo' H:mm`, now: nowFinnish, meetup })
 			const isOpen = willOpen == null && willClose != null
 
 			return <div>

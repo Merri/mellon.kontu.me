@@ -10,7 +10,7 @@ import PageFooter from '$/components/PageFooter.astro';
 import PageHeader from "$/components/PageHeader.astro";
 import { getMemberIdFromCookie } from '$/lib/auth';
 import { getLogger } from '$/lib/bugsnag';
-import { meetupToZonedTime } from '$/lib/date';
+import { meetupToZonedTime, toZonedTime } from '$/lib/date';
 import { sql } from '$/lib/db'
 import { getRegistrationCloseDate } from '$/lib/meetup';
 import { formatPrettyReference } from '$/lib/reference';
@@ -20,6 +20,7 @@ import type { Meetup, Member, Place, Registration } from "$/types/db";
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
 const now = new Date()
+const nowFinnish = toZonedTime(new Date())
 const id = Math.round(Number(Astro.params.id))
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
@@ -46,7 +47,7 @@ const meetupInterval = (meetup && meetup.begin && meetup.end && { start: startOf
 const meetupDays = meetupInterval ? eachDayOfInterval(meetupInterval) : []
 
 const closeDate = getRegistrationCloseDate(meetup)
-const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, nowFinnish) && isBefore(nowFinnish, closeDate)
 const isPost = Astro.request.method.toUpperCase() === 'POST'
 const isSubmit = isRegistrationOpen && isPost
 
@@ -184,11 +185,11 @@ if (isSubmit && member) {
 	}
 }
 
-const registrationOpens = meetup && meetup.open != null && isBefore(now, meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
+const registrationOpens = meetup && meetup.open != null && isBefore(nowFinnish, meetup.open) && format(meetup.open, `EEEE d.M.Y 'klo' H:mm`, opts)
 const registrationCloseDate = meetup && meetup.begin ? meetup.end ? isSameDay(meetup.begin, meetup.end) ? addMinutes(meetup.begin, -5) : endOfDay(meetup.begin) : meetup.begin : null
-const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(now, registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
+const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(nowFinnish, registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
 
-const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, now))
+const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, nowFinnish))
 const textRegister = meetupWasInThePast ? 'Saattoi osallistua' : 'Vahvistamatta'
 const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Osallistumassa'
 const textCancel = meetupWasInThePast ? 'Ei osallistunut' : 'Perunut'

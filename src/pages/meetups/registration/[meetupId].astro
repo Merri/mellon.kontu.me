@@ -114,7 +114,7 @@ if (meetup && place) {
 			}
 
 			persons[0].publicname = member.publicname
-			persons[0].age = differenceInYears(now, member.dob)
+			persons[0].age = differenceInYears(meetup.open || now, member.dob)
 			persons[0].name = member.fullname || ''
 
 			persons.forEach(person => {
