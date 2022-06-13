@@ -9,7 +9,7 @@ import PageHeader from '$/components/PageHeader.astro'
 import PageFooter from '$/components/PageFooter.astro'
 import { getMemberIdFromCookie } from '$/lib/auth'
 import { getLogger } from '$/lib/bugsnag'
-import { meetupToZonedTime } from '$/lib/date'
+import { meetupToZonedTime, toZonedTime } from '$/lib/date'
 import { sql } from '$/lib/db'
 import { getMeetupBankReference, getRegistrationCloseDate } from '$/lib/meetup'
 import ErrorPage from '$/pages/404.astro'
@@ -17,6 +17,7 @@ import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
 
 const now = new Date()
+const nowFinnish = toZonedTime(new Date())
 const meetupId = Math.round(Number(Astro.params.meetupId))
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
@@ -28,7 +29,7 @@ const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
 `).map(meetupToZonedTime).pop()
 
 const closeDate = getRegistrationCloseDate(meetup)
-const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, now) && isBefore(now, closeDate)
+const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, nowFinnish) && isBefore(nowFinnish, closeDate)
 
 const registrations: Registration[] = isRegistrationOpen && member ? await sql<Registration[]>`
 	SELECT *
