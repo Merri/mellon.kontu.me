@@ -10,11 +10,6 @@ const { breadcrumbs = [] } = Astro.props
 
 ---
 
-<header>
-	<a aria-hidden="false" hidden href="#main">Hyppää sisältöön</a>
-	<img alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
-	Mellon
-</header>
 <nav>
 	<ul>
 		<li><a href="/">Etusivu</a></li>
@@ -23,23 +18,35 @@ const { breadcrumbs = [] } = Astro.props
 		<li><a href="/profile">Omat tiedot</a></li>
 	</ul>
 </nav>
+<header>
+	<a aria-hidden="false" hidden href="#main">Hyppää sisältöön</a>
+	<img alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
+	Mellon
+</header>
 <Breadcrumbs links={breadcrumbs}>
 	<slot />
 </Breadcrumbs>
 <style>
 	header {
-		border-bottom: 6px double #694916;
+		border-top: 3px double #694916;
 		font-family: var(--font-serif);
 		font-size: 3.75rem;
 		font-weight: bold;
+		padding-top: 1rem;
 		text-align: center;
+	}
+
+	header+:global(main) {
+		border-top: 3px double #694916;
+		margin-top: 1rem;
 	}
 
 	ul {
 		display: flex;
 		flex-wrap: wrap;
+		font-weight: bold;
 		justify-content: center;
-		gap: 0 0.75rem;
+		gap: 0 0.5rem;
 		margin: 0;
 	}
 

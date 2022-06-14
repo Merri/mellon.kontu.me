@@ -15,38 +15,31 @@ const { links } = Astro.props
 ---
 
 {links.length > 0 && <div class="breadcrumbs-container">
-	<div class="breadcrumbs-and-extra">
+	<nav class="breadcrumbs">
+		<ol class="breadcrumbs-list" itemscope itemtype="https://schema.org/BreadcrumbList">
+			{links.map(({ href, title }: BreadcrumbLink, index: number) =>
+			<li class="breadcrumbs-list-item" itemprop="itemListElement" itemscope
+				itemtype="https://schema.org/ListItem">
 
-		<nav class="breadcrumbs">
-			<ol class="breadcrumbs-list" itemscope itemtype="https://schema.org/BreadcrumbList">
-				{links.map(({ href, title }: BreadcrumbLink, index: number) =>
-				<li class="breadcrumbs-list-item" itemprop="itemListElement" itemscope
-					itemtype="https://schema.org/ListItem">
+				{index === 0 &&
+				<Icon href="/icons/home-1.svg" /> }
 
-					{index === 0 &&
-					<Icon href="/icons/home-1.svg" /> }
+				{href != null
+				? <a href={href} itemprop="item"><span itemprop="name">{title}</span></a>
+				: <span itemprop="name">{title}</span>}
 
-					{href != null
-					? <a href={href} itemprop="item"><span itemprop="name">{title}</span></a>
-					: <span itemprop="name">{title}</span>}
-
-					<meta itemprop="position" content={`${index + 1}`} />
-				</li>
-				)}
-			</ol>
-		</nav>
-		<slot />
-	</div>
+				<meta itemprop="position" content={`${index + 1}`} />
+			</li>
+			)}
+		</ol>
+	</nav>
+	<slot />
 </div>
 }
 <style>
 	.breadcrumbs-container {
+		background: var(--bg-light-color);
 		margin: 1rem 0 0;
-	}
-
-	.breadcrumbs-and-extra {
-		background: #f5f5f5;
-		border: thin solid var(--border-color);
 	}
 
 	.breadcrumbs {
@@ -90,8 +83,8 @@ const { links } = Astro.props
 	}
 
 	@media (min-width: 70em) {
-		.breadcrumbs-and-extra {
-			border-radius: 0.5rem;
+		.breadcrumbs-container {
+			border: 3px double #694916;
 		}
 	}
 
@@ -107,14 +100,7 @@ const { links } = Astro.props
 		}
 
 		.breadcrumbs-container {
-			border-block: thin solid var(--border-color);
-		}
-
-		.breadcrumbs-container::before,
-		.breadcrumbs-container::after {
-			border-top: thin solid transparent;
-			content: '';
-			display: block;
+			border-block: 3px double #694916;
 		}
 
 		.breadcrumbs-list {

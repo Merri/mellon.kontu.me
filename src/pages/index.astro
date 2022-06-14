@@ -88,17 +88,20 @@ organizations.forEach(organization => {
 		dl {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 1rem;
+			gap: 0.5rem;
 			justify-content: space-evenly;
 			margin: 1rem;
 			text-align: center;
 		}
 
 		dl>div {
-			border: thin solid var(--border-color);
-			border-radius: 1rem;
+			background-color: var(--bg-light-color-alt);
+			background-image: radial-gradient(circle at 50%, white, rgba(255, 255, 255, 0));
+			background-position: center top;
+			background-size: 100% 100%;
+			border: 3px double var(--border-color);
 			max-width: 24rem;
-			padding: 0.5rem 1rem 0;
+			padding: 0 1rem;
 		}
 
 		dl>div:only-child {
@@ -106,10 +109,14 @@ organizations.forEach(organization => {
 		}
 
 		dt {
+			background-color: var(--bg-light-color);
+			background-image: radial-gradient(circle at 50%, transparent, rgba(0, 0, 0, 0.03125));
+			background-position: center top;
+			background-size: 100% 100%;
 			border-bottom: thin solid var(--border-color);
 			font-size: 1.25rem;
 			margin: 0 -1rem;
-			padding: 0 1rem 1rem;
+			padding: 0.5rem 1rem 1rem;
 		}
 
 		dt>small {

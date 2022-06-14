@@ -133,7 +133,11 @@ if (hasAccess) {
 			}
 
 			table :global(.odd) {
-				background-color: #f5f5f5;
+				background-color: var(--bg-light-color);
+			}
+
+			table :global(.even) {
+				background-color: var(--bg-light-color-alt);
 			}
 
 			table :global(:is(.odd, .even)) {
