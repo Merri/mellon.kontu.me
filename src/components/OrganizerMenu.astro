@@ -9,29 +9,42 @@ const { meetupId } = Astro.props
 
 ---
 
-<nav class="organizer">
-	<strong>Hallinnoi:</strong>
-	<a class="button" href={`/meetups/edit/${meetupId}`}>
-		<Icon href="/icons/edit-1.svg" size={1.25} />
-		Tiedot
-	</a>
-	<a class="button" href={`/meetups/participants/${meetupId}`} title="Osallistujat ja järjestäjät">
-		<Icon href="/icons/users-more.svg" size={1.25} />
-		Osallistujat
-	</a>
-	<a class="button" href={`/meetups/messages/${meetupId}`}>
-		<Icon href="/icons/mail.svg" size={1.25} />
-		Viestintä
-	</a>
-</nav>
+<div class="horizontally-scrollable">
+	<nav class="organizer">
+		<strong>Hallinnoi:</strong>
+		<a class="button button-alt2" href={`/meetups/edit/${meetupId}`}>
+			<Icon href="/icons/edit-1.svg" size={1.25} />
+			Tiedot
+		</a>
+		<a class="button button-alt2" href={`/meetups/participants/${meetupId}`} title="Osallistujat ja järjestäjät">
+			<Icon href="/icons/users-more.svg" size={1.25} />
+			Osallistujat
+		</a>
+		<a class="button button-alt2" href={`/meetups/messages/${meetupId}`}>
+			<Icon href="/icons/mail.svg" size={1.25} />
+			Viestintä
+		</a>
+	</nav>
+</div>
 <style>
 	.organizer {
 		align-items: center;
-		display: flex;
-		flex-wrap: wrap;
+		background: var(--border-color);
+		border-top: thin solid var(--border-color);
+		display: inline-flex;
+		font-size: 0.875rem;
 		gap: 0.5rem;
 		justify-content: flex-end;
-		margin: 1rem;
+		min-width: 100%;
+		padding: 0.5rem;
+		white-space: nowrap;
+	}
+
+	@media (min-width: 70em) {
+		.organizer {
+			border-bottom-left-radius: 0.375rem;
+			border-bottom-right-radius: 0.375rem;
+		}
 	}
 
 	.organizer .button {

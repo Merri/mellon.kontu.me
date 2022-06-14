@@ -36,6 +36,7 @@
 	--border-color: #c0ccd4;
 	--button-color: #addd6d;
 	--button-color-alt: #e7d979;
+	--button-color-alt2: #d7dfe5;
 	--button-text-color: rgba(0, 0, 0, 0.875);
 	--error-color: #ba4d4f;
 	--error-color-alt: #d5757a;
@@ -95,6 +96,10 @@
 
 .button-alt {
 	background-color: var(--button-color-alt);
+}
+
+.button-alt2 {
+	background-color: var(--button-color-alt2);
 }
 
 :is(button, .button):is(:link, :visited) {

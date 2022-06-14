@@ -23,7 +23,9 @@ const { breadcrumbs = [] } = Astro.props
 		<li><a href="/profile">Omat tiedot</a></li>
 	</ul>
 </nav>
-<Breadcrumbs links={breadcrumbs} />
+<Breadcrumbs links={breadcrumbs}>
+	<slot />
+</Breadcrumbs>
 <style>
 	header {
 		border-bottom: 6px double #694916;

@@ -81,9 +81,9 @@ if (hasAccess) {
 <BaseHead title={`Osallistujat ${meetup.title}`} description="Miitin osallistujien hallinnointi" />
 
 <body>
-	<PageHeader breadcrumbs={breadcrumbs} />
-
-	<OrganizerMenu meetupId={meetup.id} />
+	<PageHeader breadcrumbs={breadcrumbs}>
+		<OrganizerMenu meetupId={meetup.id} />
+	</PageHeader>
 
 	<main id="main">
 		<h1>

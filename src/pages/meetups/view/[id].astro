@@ -232,10 +232,10 @@ const breadcrumbs = meetup ? [
 <BaseHead title={meetup.title} description="Miitti" />
 
 <body>
-	<PageHeader breadcrumbs={breadcrumbs} />
-
-	{hasAccess &&
-	<OrganizerMenu meetupId={meetup.id} />}
+	<PageHeader breadcrumbs={breadcrumbs}>
+		{hasAccess &&
+		<OrganizerMenu meetupId={meetup.id} />}
+	</PageHeader>
 
 	<main id="main">
 		{success.has('level-update-success') && <div>Osallistuminen päivitetty!</div>}
