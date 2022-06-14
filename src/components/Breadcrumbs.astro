@@ -39,13 +39,18 @@ const { links } = Astro.props
 <style>
 	.breadcrumbs-container {
 		background: var(--bg-light-color);
+		border-block: thin solid #694916;
 		margin: 1rem 0 0;
+		text-align: center;
 	}
 
 	.breadcrumbs {
 		--link-color: black;
 		font-size: 0.875rem;
+		margin: 0 auto;
+		max-width: 70rem;
 		padding: 0.5rem 0.5rem;
+		text-align: left;
 	}
 
 	.breadcrumbs-list {
@@ -82,12 +87,6 @@ const { links } = Astro.props
 		text-decoration: none;
 	}
 
-	@media (min-width: 70em) {
-		.breadcrumbs-container {
-			border: 3px double #694916;
-		}
-	}
-
 	@media not all and (min-width: 70em) {
 		.breadcrumbs {
 			border-inline-width: 0;
@@ -97,10 +96,6 @@ const { links } = Astro.props
 			overflow-y: hidden;
 			width: 100%;
 			-webkit-overflow-scrolling: touch;
-		}
-
-		.breadcrumbs-container {
-			border-block: 3px double #694916;
 		}
 
 		.breadcrumbs-list {
