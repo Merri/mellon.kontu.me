@@ -99,14 +99,16 @@ if (isSubmit && member) {
 		}
 
 		const dayItem = meetupInterval && !item && /^days\[(\d+)\]$/.exec(key)
-		if (dayItem && days.size < 6) {
+		if (dayItem) {
 			const [_, num] = dayItem
 			const id = Number(num)
 			if (/^\d\d\d\d-\d\d-\d\d$/.test(value)) {
 				const day = new Date(value)
 				if (isWithinInterval(day, meetupInterval)) {
-					const arr = days.get(id) ?? []
-					days.set(id, arr.concat(value))
+					if (days.size < 6 || days.has(id)) {
+						const arr = days.get(id) ?? []
+						days.set(id, arr.concat(value))
+					}
 				}
 			}
 		}
