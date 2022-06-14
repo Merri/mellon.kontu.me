@@ -69,15 +69,17 @@ if (meetup && place) {
 			if (typeof value !== 'string') continue
 
 			const item = /^person\[(\d)\]\[(.*)\]$/.exec(key)
-			if (item && persons.length < 6) {
+			if (item) {
 				const [_, index, field] = item
 				const i = Number(index)
-				if (persons[i] == null) persons[Number(index)] = {}
-				if (field === 'age' || field === 'id') {
-					if (value) persons[i][field] = parseInt(value.trim(), 10) || 0
-				} else {
-					// @ts-ignore
-					persons[i][field] = value.trim()
+				if (persons[i] == null && persons.length < 6) persons[i] = {}
+				if (persons[i]) {
+					if (field === 'age' || field === 'id') {
+						if (value) persons[i][field] = parseInt(value.trim(), 10) || 0
+					} else {
+						// @ts-ignore
+						persons[i][field] = value.trim()
+					}
 				}
 			}
 		}
