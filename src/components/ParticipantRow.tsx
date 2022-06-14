@@ -104,7 +104,14 @@ export function ParticipantRow(props: ParticipantRowProps) {
 				</select>
 			</td>
 			<td hidden={overnightOptions.size < 2} style="text-align:center;white-space:nowrap">
-				<small>{props.reg.days ? props.reg.days?.split(' ').length : props.numDays}pv: </small>
+				<small>
+					{props.reg.days != null
+						? props.reg.days.split(' ').length
+						: regLevel() === 'cancelled'
+						? 0
+						: props.numDays}
+					pv:{' '}
+				</small>
 				<select id="overnight" name="overnight[${props.reg.id}]">
 					{!overnightOptions.has(regInfo.overnight || '') && (
 						<option value="" selected>
