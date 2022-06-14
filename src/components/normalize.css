@@ -36,7 +36,7 @@
 	--border-color: #c0ccd4;
 	--button-color: #addd6d;
 	--button-color-alt: #e7d979;
-	--button-color-alt2: #d7dfe5;
+	--button-color-alt2: #dce5d7;
 	--button-text-color: rgba(0, 0, 0, 0.875);
 	--error-color: #ba4d4f;
 	--error-color-alt: #d5757a;
@@ -84,6 +84,7 @@
 	justify-content: center;
 	min-width: 12rem;
 	padding: 0.5rem 1.5rem;
+	user-select: none;
 	text-shadow: -1px -1px 2px rgba(255, 255, 255, 0.75), 1px 1px 1px rgba(0, 0, 0, 0.0625);
 	transform: translateY(0);
 }
