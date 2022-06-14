@@ -43,11 +43,15 @@ const breadcrumbs = [
 
 	<main id="main">
 		<h1>Miittipaikat</h1>
-		<p>Puuttuuko miittipaikka? <a href="/places/add">Lisää uusi miittipaikka!</a></p>
+		<!--p>Puuttuuko miittipaikka? <a href="/places/add">Lisää uusi miittipaikka!</a></p-->
+		<p>(Tapahtumapaikkojen selailu ja lisäys tulossa myöhemmin.)</p>
 		{places.length > 0 && <>
 			<ul>
-				{places.map(place => <li><a href={`/places/view/${place.id}`}>{place.name}</a> ({place.meetCount}
-					miittiä)</li>)}
+				{places.map(place => <li>
+					<!--a href={`/places/view/${place.id}`}-->{place.name}
+					<!--/a--> ({place.meetCount}
+					miittiä)
+				</li>)}
 			</ul>
 		</>}
 	</main>
