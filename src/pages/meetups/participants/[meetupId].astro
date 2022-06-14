@@ -89,8 +89,6 @@ if (hasAccess) {
 		<h1>
 			<Icon href="/icons/users-more.svg" size={3.5} /> Osallistujat
 		</h1>
-		{isOwner && <p>Olet miitin hallinnoija. Sinulta ei voi poistaa tätä oikeutta vaikka et olisi merkattuna miitin
-			järjestäjäksi.</p>}
 
 		<div class="horizontally-scrollable">
 			<table>
@@ -112,49 +110,52 @@ if (hasAccess) {
 						overnightOptions={overnightOptions} numDays={numDays} sauna={meetup.enableSaunaOption} />))}
 				</tbody>
 			</table>
-			<style>
-				.horizontally-scrollable {
-					margin: 0 -1rem;
-				}
-
-				table {
-					margin: auto;
-				}
-
-				th {
-					font-size: 0.875rem;
-					padding: 0.5rem 1rem;
-				}
-
-				table :global(td) {
-					padding: 0rem 1rem 1rem;
-				}
-
-				table :global(.odd) {
-					background-color: #f5f5f5;
-				}
-
-				table :global(:is(.odd, .even)) {
-					border-inline: thin solid var(--border-color);
-				}
-
-				table :global(tr:last-child) {
-					border-bottom: thin solid var(--border-color);
-				}
-
-				table :global(.odd:first-child),
-				table :global(.even + .odd),
-				table :global(.odd + .even) {
-					border-top: thin solid var(--border-color);
-				}
-
-				table :global(.odd:first-child td),
-				table :global(.even + .odd td),
-				table :global(.odd + .even td) {
-					padding-top: 1rem;
-				}
-			</style>
 		</div>
+		{isOwner && <p>Olet miitin hallinnoija. Sinulta ei voi poistaa tätä oikeutta vaikka et olisi merkattuna miitin
+			järjestäjäksi.</p>}
+		<p>(Pahoittelut, tallentamista ei ole vielä toteutettu.)</p>
+		<style>
+			.horizontally-scrollable {
+				margin: 0 -1rem;
+			}
+
+			table {
+				margin: auto;
+			}
+
+			th {
+				font-size: 0.875rem;
+				padding: 0.5rem 1rem;
+			}
+
+			table :global(td) {
+				padding: 0rem 1rem 1rem;
+			}
+
+			table :global(.odd) {
+				background-color: #f5f5f5;
+			}
+
+			table :global(:is(.odd, .even)) {
+				border-inline: thin solid var(--border-color);
+			}
+
+			table :global(tr:last-child) {
+				border-bottom: thin solid var(--border-color);
+			}
+
+			table :global(.odd:first-child),
+			table :global(.even + .odd),
+			table :global(.odd + .even) {
+				border-top: thin solid var(--border-color);
+			}
+
+			table :global(.odd:first-child td),
+			table :global(.even + .odd td),
+			table :global(.odd + .even td) {
+				padding-top: 1rem;
+			}
+		</style>
 
 	</main>
 

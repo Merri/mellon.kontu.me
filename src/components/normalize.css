@@ -224,3 +224,42 @@ html[data-local-storage~='useOpenDyslexic'] {
 		display: none;
 	}
 }
+
+.checkpick {
+	cursor: pointer;
+	user-select: none;
+}
+
+.checkpickState:focus {
+	clip: rect(0, 0, 0, 0);
+	position: absolute;
+}
+
+.checkpickState:focus-visible + .checkpickCheck {
+	outline: 3px solid var(--focus-color);
+	outline-offset: 3px;
+	position: relative;
+}
+
+.checkpickCheck {
+	border-radius: 0.25rem;
+	display: inline-block;
+	font-family: ui-monospace, monospace;
+	margin: 0.25rem 0.125rem;
+	padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+}
+
+.checkpickState:not(:checked) + .checkpickCheck {
+	--icon-stroke-color: var(--error-color);
+	color: var(--error-color);
+}
+
+.checkpickState:not(:checked) + .checkpickCheck svg {
+	opacity: 0.25;
+}
+
+.checkpickState:checked + .checkpickCheck {
+	--icon-stroke-color: var(--link-color);
+	background: white;
+	box-shadow: 0 0 0 2px var(--border-color);
+}

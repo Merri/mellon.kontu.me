@@ -1,6 +1,12 @@
 import { Icon } from './Icon'
 
-import styles from './Checkpick.module.css'
+// import styles from './Checkpick.module.css'
+
+const styles = {
+	checkpick: 'checkpick',
+	checkpickCheck: 'checkpickCheck',
+	checkpickState: 'checkpickState',
+} as const
 
 interface CheckPickProps {
 	checked: boolean
