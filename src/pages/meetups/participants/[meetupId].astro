@@ -1,0 +1,167 @@
+---
+import BaseHead from "$/components/BaseHead.astro"
+import OrganizerMenu from "$/components/OrganizerMenu.astro"
+import { ParticipantRow } from '$/components/ParticipantRow'
+import PageFooter from "$/components/PageFooter.astro"
+import PageHeader from "$/components/PageHeader.astro"
+import { getMemberIdFromCookie } from "$/lib/auth"
+import { meetupToZonedTime, toZonedTime } from "$/lib/date"
+import { sql } from "$/lib/db"
+import NotAuthenticated from '$/pages/401.astro'
+import NotAuthorized from '$/pages/403.astro'
+import type { Meetup, Member, Registration } from "$/types/db"
+import { getOvernightOptions } from '$/lib/meetup'
+import { differenceInDays, endOfDay, startOfDay } from "date-fns"
+import Icon from "$/components/Icon.astro"
+
+const now = new Date()
+const nowFinnish = toZonedTime(new Date())
+const meetupId = Math.round(Number(Astro.params.meetupId))
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
+	SELECT *
+	FROM meetups
+	WHERE id = ${meetupId}
+`).map(meetupToZonedTime).pop()
+
+const registrations: Registration[] = meetup && member ? await sql<Registration[]>`
+	SELECT *
+	FROM registrations
+	WHERE "meetupId" = ${meetup.id}
+	ORDER BY "isOrganizer" DESC,
+		"cancelled" ASC NULLS FIRST,
+		"confirmed" ASC NULLS LAST,
+		"registered" ASC NULLS LAST,
+		"id" ASC
+` : []
+
+const isOwner = meetup != null && member != null && meetup.memberId === member.id
+const isOrganizer =
+	meetup != null && member != null && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
+const hasAccess = isOwner || isOrganizer
+
+const regMemberIds = Array.from(new Set(registrations.map(({ memberId }) => memberId)))
+
+const members = hasAccess ? await sql<Member[]>`SELECT * FROM members WHERE id IN ${sql(regMemberIds)}` : []
+
+members.sort(
+	(a, b) =>
+		registrations.findIndex(reg => reg.memberId === a.id) - registrations.findIndex(reg => reg.memberId === b.id)
+)
+
+const memberRows = members.map(member => ({
+	memberId: member.id,
+	publicname: member.publicname,
+	fullname: member.fullname,
+	email: member.email,
+	phone: member.phone,
+	regs: registrations.filter(reg => reg.memberId === member.id)
+}))
+
+const overnightOptions = getOvernightOptions(meetup)
+const numDays = meetup && meetup.begin != null && meetup.end != null ? differenceInDays(endOfDay(meetup.end), startOfDay(meetup.begin)) + 1 : 1
+
+const breadcrumbs = meetup ? [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/meetups`, title: 'Miitit' },
+	{ href: `/meetups/view/${meetup.id}`, title: meetup.title },
+	{ title: 'Osallistujat' }
+] : []
+
+if (hasAccess) {
+	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
+}
+
+---
+
+{(hasAccess && <html lang="fi">
+
+<BaseHead title={`Osallistujat ${meetup.title}`} description="Miitin osallistujien hallinnointi" />
+
+<body>
+	<PageHeader breadcrumbs={breadcrumbs} />
+
+	<OrganizerMenu meetupId={meetup.id} />
+
+	<main id="main">
+		<h1>
+			<Icon href="/icons/users-more.svg" size={3.5} /> Osallistujat
+		</h1>
+		{isOwner && <p>Olet miitin hallinnoija. Sinulta ei voi poistaa tätä oikeutta vaikka et olisi merkattuna miitin
+			järjestäjäksi.</p>}
+
+		<div class="horizontally-scrollable">
+			<table>
+				<thead>
+					<tr>
+						<th style="text-align:right" title="Osallistumisjärjestys">#</th>
+						<th style="text-align:left">Osallistuja</th>
+						<th style="text-align:right">Ikä</th>
+						<th>Osallistuminen</th>
+						<th hidden={overnightOptions.length<2}>Yöpyminen</th>
+						<th hidden={!meetup.enableSaunaOption}>Saunatoive</th>
+						<th style="text-align:left">Vastuuhenkilö</th>
+					</tr>
+				</thead>
+				<tbody>
+					{memberRows.map((member, memberIndex) => member.regs.map((reg, index) =>
+					<ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index} reg={reg}
+						regIndex={registrations.findIndex(r=> r === reg)}
+						overnightOptions={overnightOptions} numDays={numDays} sauna={meetup.enableSaunaOption} />))}
+				</tbody>
+			</table>
+			<style>
+				.horizontally-scrollable {
+					margin: 0 -1rem;
+				}
+
+				table {
+					margin: auto;
+				}
+
+				th {
+					font-size: 0.875rem;
+					padding: 0.5rem 1rem;
+				}
+
+				table :global(td) {
+					padding: 0rem 1rem 1rem;
+				}
+
+				table :global(.odd) {
+					background-color: #f5f5f5;
+				}
+
+				table :global(:is(.odd, .even)) {
+					border-inline: thin solid var(--border-color);
+				}
+
+				table :global(tr:last-child) {
+					border-bottom: thin solid var(--border-color);
+				}
+
+				table :global(.odd:first-child),
+				table :global(.even + .odd),
+				table :global(.odd + .even) {
+					border-top: thin solid var(--border-color);
+				}
+
+				table :global(.odd:first-child td),
+				table :global(.even + .odd td),
+				table :global(.odd + .even td) {
+					padding-top: 1rem;
+				}
+			</style>
+		</div>
+
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>) ||
+(member != null &&
+<NotAuthorized />) ||
+<NotAuthenticated />}

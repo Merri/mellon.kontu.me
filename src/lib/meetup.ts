@@ -14,6 +14,17 @@ interface MeetupDateOptions {
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
+export function getOvernightOptions(meetup?: Meetup): string[] {
+	if (!meetup) return []
+	if (!meetup.begin || !meetup.end) return []
+	if (isSameDay(meetup.begin, meetup.end)) return []
+	return [
+		'bed',
+		meetup.enableDailyVisitors && 'dailyVisitor',
+		meetup.enableCampingMembers && 'camping'
+	].filter((x): x is string => typeof x === 'string')
+}
+
 export function getMeetupBankReference({ meetup, member, now }: { meetup: Meetup; member: Member; now: Date }) {
 	if (meetup.isFree) return null
 

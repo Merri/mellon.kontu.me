@@ -1,0 +1,46 @@
+---
+import Icon from "./Icon.astro";
+
+export interface Props {
+	meetupId: number
+}
+
+const { meetupId } = Astro.props
+
+---
+
+<nav class="organizer">
+	<strong>Hallinnoi:</strong>
+	<a class="button" href={`/meetups/edit/${meetupId}`}>
+		<Icon href="/icons/edit-1.svg" size={1.25} />
+		Tiedot
+	</a>
+	<a class="button" href={`/meetups/participants/${meetupId}`} title="Osallistujat ja järjestäjät">
+		<Icon href="/icons/users-more.svg" size={1.25} />
+		Osallistujat
+	</a>
+	<a class="button" href={`/meetups/messages/${meetupId}`}>
+		<Icon href="/icons/mail.svg" size={1.25} />
+		Viestintä
+	</a>
+</nav>
+<style>
+	.organizer {
+		align-items: center;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		justify-content: flex-end;
+		margin: 1rem;
+	}
+
+	.organizer .button {
+		font-size: 0.875rem;
+		min-width: 0;
+		padding: 0.5rem 1rem;
+	}
+
+	.organizer .button :global(svg) {
+		width: 1.25rem;
+	}
+</style>

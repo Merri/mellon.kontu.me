@@ -4,8 +4,8 @@ import Fellowship from "$/components/Fellowship.astro";
 import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
 
-Astro.response.status = 404
-Astro.response.statusText = 'Not Found'
+Astro.response.status = 401
+Astro.response.statusText = 'Not Authenticated'
 Astro.response.headers.set('Cache-Control', 'private, max-age=60')
 Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
@@ -13,15 +13,15 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
 <html lang="fi">
 
-<BaseHead title="Sivua ei löytynyt | Mellon"
-	description="Hankalahan sitä on sivua näyttää jos osoite on päin honkia!" />
+<BaseHead title="Passi puuttuu! | Mellon" description="Hankalahan sitä on sivua näyttää jos paperit puuttuu!" />
 
 <body>
 	<PageHeader />
 
 	<main id="main">
-		<h1>Sivua ei löydy!</h1>
-		<p>Taisi tulla semmoinen eksyminen nyt väärään paikkaan.</p>
+		<h1>Passi puuttuu!</h1>
+		<p>Semmoinen juttu että jos tälle sivulle aiot tulla, niin ensin pitäisi näyttää papereita. Eli siis <a
+				href="/profile">kirjaudu sisään</a>!</p>
 	</main>
 
 	<Fellowship />

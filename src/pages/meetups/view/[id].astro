@@ -5,7 +5,9 @@ import { format } from 'date-fns-tz';
 import { marked } from 'marked'
 
 import BaseHead from "$/components/BaseHead.astro";
+import { CheckPick } from '$/components/CheckPick';
 import Icon from '$/components/Icon.astro';
+import OrganizerMenu from '$/components/OrganizerMenu.astro';
 import PageFooter from '$/components/PageFooter.astro';
 import PageHeader from "$/components/PageHeader.astro";
 import { getMemberIdFromCookie } from '$/lib/auth';
@@ -42,6 +44,11 @@ const registrations = await sql<Registration[]>`
 		"registered" ASC NULLS LAST,
 		"id" ASC
 `
+
+const isOwner = meetup != null && member != null && meetup.memberId === member.id
+const isOrganizer =
+	meetup != null && member != null && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
+const hasAccess = isOwner || isOrganizer
 
 const meetupInterval = (meetup && meetup.begin && meetup.end && { start: startOfDay(meetup.begin), end: endOfDay(meetup.end) }) || null
 const meetupDays = meetupInterval ? eachDayOfInterval(meetupInterval) : []
@@ -226,6 +233,10 @@ const breadcrumbs = meetup ? [
 
 <body>
 	<PageHeader breadcrumbs={breadcrumbs} />
+
+	{hasAccess &&
+	<OrganizerMenu meetupId={meetup.id} />}
+
 	<main id="main">
 		{success.has('level-update-success') && <div>Osallistuminen päivitetty!</div>}
 		{success.has('no-level-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
@@ -256,7 +267,8 @@ const breadcrumbs = meetup ? [
 
 					return <div>
 						<dt>{reg.publicname}</dt>
-						<dd class="form-field">
+						<dd class="form-field" style="min-width:8.75rem">
+							{regLevel==='organizer' ? <><strong>Järjestäjä</strong><br />Osallistuu</> :
 							<label>
 								Osallistuminen:
 								<select name={`level[${reg.id}]`}>
@@ -270,25 +282,22 @@ const breadcrumbs = meetup ? [
 										Ei osallistu
 									</option>
 								</select>
-							</label>
+							</label>}
 						</dd>
 						{meetupInterval && <dd class="form-field reg-days">
 							<span>Päivät jos osallistuu:</span><br />
-							{meetupDays.map(date => {
+							<span class="dayspicks">
+								{meetupDays.map(date => {
 
-							const ymd = format(date, 'yyyy-MM-dd' , opts)
-							const checked = regLevel !== 'cancelled' && (reg.days == null || inRegDates(date))
+								const ymd = format(date, 'yyyy-MM-dd' , opts)
+								const checked = regLevel !== 'cancelled' && (reg.days == null || inRegDates(date))
+								const title = format(date, 'EEEE d.M.yyyy' , opts)
 
-							return <label class="daypick" title={format(date, 'EEEE d.M.yyyy' , opts)}>
-								<input type="checkbox" name={`days[${reg.id}]`} value={ymd} checked={checked}
-									value={ymd} aria-hidden="false" hidden />
-								<span class="daypick-check">
-									<Icon href="/icons/check.svg" />
-									{format(date, 'EEEEEE', opts)}
-								</span>
-							</label>
-
-							})}
+								return <CheckPick checked={checked} name={`days[${reg.id}]`} title={title} value={ymd}>
+									{format(date, 'EEEEEE', opts).toUpperCase()}
+								</CheckPick>
+								})}
+							</span>
 						</dd>}
 					</div>})}
 				</dl>
@@ -303,43 +312,10 @@ const breadcrumbs = meetup ? [
 				varten:<br /><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></p>}
 			<p><a href={`/meetups/registration/${meetup.id}`}>Tarkasta ilmoittautumisen tiedot</a></p>
 			<style>
-				.daypick {
-					cursor: pointer;
-					user-select: none;
-				}
-
-				.daypick input:focus {
-					clip: rect(0, 0, 0, 0);
-					position: absolute;
-				}
-
-				.daypick input:focus-visible+.daypick-check {
-					outline: 3px solid var(--focus-color);
-					outline-offset: 3px;
-					position: relative;
-				}
-
-				.daypick-check {
-					border-radius: 0.25rem;
-					display: inline-block;
-					font-family: ui-monospace, monospace;
-					margin: 0.25rem 0.125rem;
-					padding: 0.25rem 0.5rem 0.25rem 0.25rem;
-					text-transform: uppercase;
-				}
-
-				[type="checkbox"]:not(:checked)+.daypick-check {
-					--icon-stroke-color: var(--error-color);
-				}
-
-				[type="checkbox"]:not(:checked)+.daypick-check :global(svg) {
-					opacity: 0.25;
-				}
-
-				[type="checkbox"]:checked+.daypick-check {
-					--icon-stroke-color: var(--link-color);
-					background: white;
-					box-shadow: 0 0 0 2px var(--border-color);
+				.dayspicks {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 0rem 0.25rem;
 				}
 
 				.participated {

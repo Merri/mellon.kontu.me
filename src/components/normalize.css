@@ -206,3 +206,21 @@ html[data-local-storage~='useOpenDyslexic'] {
 	box-shadow: 0 0 0 2px var(--error-color-alt);
 	outline-offset: 5px;
 }
+
+@media not all and (min-width: 70em) {
+	.horizontally-scrollable {
+		contain: content;
+		overflow: hidden;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		/* Legacy IE & Edge */
+		-ms-overflow-style: none;
+		/* Firefox 64+ */
+		scrollbar-width: none;
+	}
+
+	/* Chrome & Safari */
+	.horizontally-scrollable::-webkit-scrollbar {
+		display: none;
+	}
+}
