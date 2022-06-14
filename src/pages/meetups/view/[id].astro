@@ -210,6 +210,12 @@ if (member || dialog != null) {
 	Astro.response.headers.set('Cache-Control', 'public, max-age=3600')
 }
 
+const breadcrumbs = meetup ? [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/meetups`, title: 'Miitit' },
+	{ title: meetup.title }
+] : []
+
 ---
 
 {meetup ?
@@ -219,7 +225,7 @@ if (member || dialog != null) {
 <BaseHead title={meetup.title} description="Miitti" />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
 		{success.has('level-update-success') && <div>Osallistuminen päivitetty!</div>}
 		{success.has('no-level-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}

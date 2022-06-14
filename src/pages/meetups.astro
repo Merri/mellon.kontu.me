@@ -15,6 +15,11 @@ const meetupsInProgress = allMeetups.filter(meetup => meetup.begin && meetup.end
 const upcomingMeetups = allMeetups.filter(meetup => meetup.begin == null || isBefore(now, meetup.begin))
 const pastMeetups = allMeetups.filter(meetup => !meetupsInProgress.includes(meetup) && !upcomingMeetups.includes(meetup))
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ title: 'Miitit' }
+]
+
 ---
 
 <html lang="fi">
@@ -24,7 +29,7 @@ const pastMeetups = allMeetups.filter(meetup => !meetupsInProgress.includes(meet
 
 <body>
 
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
 		<h1>Miitit</h1>

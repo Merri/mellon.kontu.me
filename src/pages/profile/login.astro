@@ -34,6 +34,12 @@ const dialog = new URL(Astro.request.url).searchParams.get('dialog')
 Astro.response.headers.set('Cache-Control', 'no-cache')
 Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/profile`, title: 'Omat tiedot' },
+	{ title: 'Kirjautuminen' }
+]
+
 ---
 
 <html lang="fi">
@@ -41,7 +47,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 <BaseHead title="Kirjautuminen Melloniin" description="Yllätys! Tällä sivulla kirjaudutaan sisään." />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
 		{dialog === 'login-failed' && <div>Kirjautuminen ei onnistunut.</div>}
 		<h1>Kirjautuminen</h1>

@@ -79,6 +79,12 @@ const errors = new Set(Array.isArray(response) ? response : [])
 Astro.response.headers.set('Cache-Control', 'no-cache')
 Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/profile`, title: 'Omat tiedot' },
+	{ title: 'Salasanan asettaminen' }
+]
+
 ---
 
 <html lang="fi">
@@ -86,7 +92,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 <BaseHead title="Salasanan asettaminen" description="Salasana asetetaan tällä sivulla" />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
 		{dialog === 'database-failure' && <div>Salasanan tallentamisessa tapahtui virhe. Salasana ei mahdollisesti

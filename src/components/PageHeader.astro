@@ -1,9 +1,17 @@
 ---
+import Breadcrumbs from "./Breadcrumbs.astro";
+import type { BreadcrumbLink } from "./Breadcrumbs.astro";
+
+export interface Props {
+	breadcrumbs?: BreadcrumbLink[]
+}
+
+const { breadcrumbs = [] } = Astro.props
 
 ---
 
 <header>
-	<img loading="lazy" alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
+	<img alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
 	Mellon
 </header>
 <nav>
@@ -14,6 +22,7 @@
 		<li><a href="/profile">Omat tiedot</a></li>
 	</ul>
 </nav>
+<Breadcrumbs links={breadcrumbs} />
 <style>
 	header {
 		border-bottom: 6px double #694916;

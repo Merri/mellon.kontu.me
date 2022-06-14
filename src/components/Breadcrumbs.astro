@@ -1,0 +1,120 @@
+---
+import Icon from "./Icon.astro";
+
+export interface Props {
+	links: BreadcrumbLink[]
+}
+
+export type BreadcrumbLink = {
+	href?: string,
+	title: string,
+}
+
+const { links } = Astro.props
+
+---
+
+{links.length > 0 && <div class="breadcrumbs-container">
+	<nav class="breadcrumbs">
+		<ol class="breadcrumbs-list" itemscope itemtype="https://schema.org/BreadcrumbList">
+			{links.map(({ href, title }: BreadcrumbLink, index: number) =>
+			<li class="breadcrumbs-list-item" itemprop="itemListElement" itemscope
+				itemtype="https://schema.org/ListItem">
+
+				{index === 0 &&
+				<Icon href="/icons/home-1.svg" /> }
+
+				{href != null
+				? <a href={href} itemprop="item"><span itemprop="name">{title}</span></a>
+				: <span itemprop="name">{title}</span>}
+
+				<meta itemprop="position" content={`${index + 1}`} />
+			</li>
+			)}
+		</ol>
+	</nav>
+</div>
+}
+<style>
+	.breadcrumbs-container {
+		margin: 1rem 0 0;
+	}
+
+	.breadcrumbs {
+		--link-color: black;
+		background: #f5f5f5;
+		border: thin solid var(--border-color);
+		font-size: 0.875rem;
+		padding: 0.5rem 0.5rem;
+	}
+
+	.breadcrumbs-list {
+		margin: 0;
+		list-style: none;
+		padding: 0;
+	}
+
+	.breadcrumbs-list-item {
+		align-items: center;
+		display: inline-flex;
+		margin: 0;
+	}
+
+	.breadcrumbs-list-item:last-of-type {
+		font-weight: bold;
+	}
+
+	.breadcrumbs-list-item>:global(:is(a, span)) {
+		display: inline-block;
+		padding: 0.25rem 0.5rem;
+	}
+
+	.breadcrumbs-list-item> :global(svg) {
+		transform: translateX(0.125rem);
+	}
+
+	.breadcrumbs-list-item:not(:first-child)>:global(:is(a, span)::before) {
+		color: var(--border-color);
+		content: '➤';
+		display: inline-block;
+		margin-right: 0.5rem;
+		-webkit-text-stroke: 1px black;
+		text-decoration: none;
+	}
+
+	@media (min-width: 70em) {
+		.breadcrumbs {
+			border-radius: 0.5rem;
+		}
+	}
+
+	@media not all and (min-width: 70em) {
+		.breadcrumbs {
+			border-inline-width: 0;
+			direction: rtl;
+			display: flex;
+			overflow: auto;
+			overflow-y: hidden;
+			width: 100%;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		.breadcrumbs-container {
+			border-block: thin solid var(--border-color);
+		}
+
+		.breadcrumbs-container::before,
+		.breadcrumbs-container::after {
+			border-top: thin solid transparent;
+			content: '';
+			display: block;
+		}
+
+		.breadcrumbs-list {
+			display: inline-block;
+			direction: ltr;
+			margin-right: auto;
+			white-space: nowrap;
+		}
+	}
+</style>

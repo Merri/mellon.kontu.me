@@ -34,14 +34,20 @@ const dialog = new URL(Astro.request.url).searchParams.get('dialog')
 Astro.response.headers.set('Cache-Control', 'no-cache')
 Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/profile`, title: 'Omat tiedot' },
+	{ title: 'Ensimmäinen kirjautuminen' }
+]
+
 ---
 
 <html lang="fi">
 
-<BaseHead title="Rekisteröityminen Melloniin" description="Yllätys! Tällä sivulla tehdään tunnus." />
+<BaseHead title="Ensikirjautuminen Melloniin" description="Yllätys! Tällä sivulla tehdään tunnus." />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
 		{dialog === 'create-user-failed' && <div>Tunnuksen luomisessa tapahtui tuntematon virhe.</div>}
 		{dialog === 'invalid-data' && <div>Tarkista että syöttämäsi tiedot ovat kohdillaan, kaikki vaaditut kentät on

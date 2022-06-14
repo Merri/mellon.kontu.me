@@ -127,6 +127,12 @@ const errors = new Set(Array.isArray(response) ? response : [])
 Astro.response.headers.set('Cache-Control', 'no-cache')
 Astro.response.headers.set('X-Robots-Tag', 'noindex')
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/profile`, title: 'Omat tiedot' },
+	{ title: 'Tietojen päivittäminen' }
+]
+
 ---
 
 <html lang="fi">
@@ -134,7 +140,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex')
 <BaseHead title="Tietojen päivittäminen" description="Käyttäjätietojen päivittäminen" />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
 		{dialog === 'update-failure' && <div>Muutosten tallentamisessa tapahtui virhe.</div>}

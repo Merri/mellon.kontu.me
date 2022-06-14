@@ -25,6 +25,11 @@ const otherPlaces = await sql<PlaceWithMeetCount[]>`
 
 const places = placesWithMeetups.concat(otherPlaces)
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ title: 'Miittipaikat' }
+]
+
 ---
 
 <html lang="fi">
@@ -34,7 +39,7 @@ const places = placesWithMeetups.concat(otherPlaces)
 
 <body>
 
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
 		<h1>Miittipaikat</h1>

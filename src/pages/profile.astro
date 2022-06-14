@@ -31,6 +31,11 @@ if (member || dialog != null) {
 	Astro.response.headers.set('X-Robots-Tag', 'noindex')
 }
 
+const breadcrumbs = [
+	{ href: '/', title: 'Etusivu' },
+	{ title: 'Omat tiedot' }
+]
+
 ---
 
 <html lang="fi">
@@ -38,7 +43,7 @@ if (member || dialog != null) {
 <BaseHead title="Omat tiedot Mellonissa" description="Käyttäjätiedot Mellonissa ja tietoa tietosuojasta" />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
 		{showLoginFailed && <div>Salasanaa tarkastaessa tapahtui odottamaton virhe, joten kirjautuminen ei onnistunut.
 		</div>}

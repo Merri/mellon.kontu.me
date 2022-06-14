@@ -265,6 +265,13 @@ if (member) {
 	Astro.response.headers.set('Cache-Control', 'public, max-age=60')
 }
 
+const breadcrumbs = meetup ? [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/meetups`, title: 'Miitit' },
+	{ href: `/meetups/view/${meetupId}`, title: meetup.title },
+	{ title: 'Ilmoittautuminen' }
+] : []
+
 ---
 
 {meetup && place ? <html lang="fi">
@@ -273,7 +280,7 @@ if (member) {
 	description="Tällä sivulla voit ilmoittautua tapahtumaan" />
 
 <body>
-	<PageHeader />
+	<PageHeader breadcrumbs={breadcrumbs} />
 
 	{isRegistrationOpen ?
 	<main id="main">
@@ -290,12 +297,7 @@ if (member) {
 			mikäli sait tämän virheilmoituksen normaalikäytössä!</div>}
 		{dialog === 'profile-data-missing' && <div>Tiedoistasi puuttuu olennaisia tietoja kuten julkinen nimi tai
 			syntymäpäivä. <a href="/profile">Käy täyttämässä puuttuvat tiedot</a>.</div> }
-		<p>
-			<a class="button" href={`/meetups/view/${meetupId}`}>
-				<Icon href="/icons/arrow-left.svg" />
-				Tapahtuman esittely
-			</a>
-		</p>
+
 		<h1>{meetup.title}</h1>
 		<p>
 			{!isUpdate ? <span>Olet ilmoittautumassa tähän tapahtumaan.</span> : <span>Olet ilmoittautunut tähän
