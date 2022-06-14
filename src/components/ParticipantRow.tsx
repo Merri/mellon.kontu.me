@@ -106,7 +106,7 @@ export function ParticipantRow(props: ParticipantRowProps) {
 			<td hidden={overnightOptions.size < 2} style="text-align:center;white-space:nowrap">
 				<small>
 					{props.reg.days != null
-						? props.reg.days.split(' ').length
+						? props.reg.days.split(' ').filter((x) => x).length
 						: regLevel() === 'cancelled'
 						? 0
 						: props.numDays}

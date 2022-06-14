@@ -405,10 +405,9 @@ const breadcrumbs = meetup ? [
 					right.disabled = true
 
 					let zoomLevel = 3
+					let loading = false
 
 					function imageLoaded() {
-						left.disabled = zoomLevel === 0
-						right.disabled = zoomLevel === 3
 						image.style = ''
 					}
 
@@ -419,13 +418,14 @@ const breadcrumbs = meetup ? [
 						zoomLevel = Math.min(Math.max(level, 0), 3)
 						const url = new URL(image.src)
 						url.searchParams.set('zoom', zoomLevel.toString())
-						left.disabled = right.disabled = true
+						left.disabled = zoomLevel === 0
+						right.disabled = zoomLevel === 3
 						image.style = 'opacity:0.5'
 						image.src = url
 					}
 
-					left.onclick = () => setZoom(zoomLevel - 1)
-					right.onclick = () => setZoom(zoomLevel + 1)
+					left.onclick = () => !loading && setZoom(zoomLevel - 1)
+					right.onclick = () => !loading && setZoom(zoomLevel + 1)
 				</script>
 				<style>
 					.map-browser {
