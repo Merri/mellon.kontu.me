@@ -33,8 +33,8 @@
 		'Bookman Old Style', 'Bitstream Charter', 'Nimbus Roman No9 L', Garamond, 'Apple Garamond',
 		'ITC Garamond Narrow', 'New Century Schoolbook', 'Century Schoolbook', 'Century Schoolbook L', Georgia, ui-serif,
 		serif;
-	--bg-light-color: #f9f5e0;
-	--bg-light-color-alt: #fefdf6;
+	--bg-light-color: #f4edcc;
+	--bg-light-color-alt: #fffef5;
 	--border-color: #c0ccd4;
 	--button-color: #addd6d;
 	--button-color-alt: #e7d979;
@@ -49,6 +49,7 @@
 	--icon-stroke-color: currentColor;
 	--icon-shade-color: transparent;
 	--link-color: #4f8c31;
+	--text-color: #3D3329;
 }
 
 :focus:not(:focus-visible) {
@@ -128,6 +129,7 @@
 }
 
 body {
+	color: var(--text-color);
 	display: flex;
 	flex-direction: column;
 	min-height: calc(100vh + 1px);

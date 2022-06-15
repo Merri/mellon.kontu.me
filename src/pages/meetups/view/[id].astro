@@ -15,6 +15,8 @@ import { getLogger } from '$/lib/bugsnag';
 import { meetupToZonedTime, toZonedTime } from '$/lib/date';
 import { sql } from '$/lib/db'
 import { getRegistrationCloseDate } from '$/lib/meetup';
+import { getRegLevel } from '$/lib/registration';
+import type { RegLevelType } from '$/lib/registration';
 import { formatPrettyReference } from '$/lib/reference';
 import ErrorPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from "$/types/db";
@@ -45,30 +47,24 @@ const registrations = await sql<Registration[]>`
 		"id" ASC
 `
 
-const isOwner = meetup != null && member != null && meetup.memberId === member.id
-const isOrganizer =
-	meetup != null && member != null && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
+const hasData = meetup != null && member != null
+const isOwner = hasData && meetup.memberId === member.id
+const isOrganizer = hasData && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
 const hasAccess = isOwner || isOrganizer
 
 const meetupInterval = (meetup && meetup.begin && meetup.end && { start: startOfDay(meetup.begin), end: endOfDay(meetup.end) }) || null
 const meetupDays = meetupInterval ? eachDayOfInterval(meetupInterval) : []
 
 const closeDate = getRegistrationCloseDate(meetup)
-const isRegistrationOpen = meetup?.open != null && closeDate != null && isBefore(meetup.open, nowFinnish) && isBefore(nowFinnish, closeDate)
+const registrationInterval = (meetup?.open != null && closeDate != null && { start: meetup.open, end: closeDate }) || null
+const isRegistrationOpen = registrationInterval != null && isWithinInterval(nowFinnish, registrationInterval)
+
 const isPost = Astro.request.method.toUpperCase() === 'POST'
 const isSubmit = isRegistrationOpen && isPost
 
-const memberRegs = isRegistrationOpen && member ? registrations.filter(registration => registration.memberId === member.id) : []
-
-type RegLevelType = 'organizer' | 'cancelled' | 'confirmed' | 'registered' | 'added'
-
-function getRegLevel(reg: Registration): RegLevelType {
-	if (reg.isOrganizer) return 'organizer'
-	if (reg.cancelled != null) return 'cancelled'
-	if (reg.confirmed != null) return 'confirmed'
-	if (reg.registered != null) return 'registered'
-	return 'added'
-}
+const memberRegs = isRegistrationOpen && member
+	? registrations.filter(registration => registration.memberId === member.id).sort((a, b) => a.id - b.id)
+	: []
 
 type ErrorType = 'database-error'
 type SuccessType = 'level-update-success' | 'no-level-to-update'
@@ -199,8 +195,8 @@ const registrationCloseDate = meetup && meetup.begin ? meetup.end ? isSameDay(me
 const registrationCloses = registrationOpens && registrationCloseDate != null && isBefore(nowFinnish, registrationCloseDate) && format(registrationCloseDate, `EEEE d.M.Y 'klo' H:mm`, opts)
 
 const meetupWasInThePast = meetup && (meetup.end == null || isBefore(meetup.end, nowFinnish))
-const textRegister = meetupWasInThePast ? 'Saattoi osallistua' : 'Vahvistamatta'
-const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Osallistumassa'
+const textRegister = meetupWasInThePast ? 'Saattoi osallistua' : 'Ehkä'
+const textConfirm = meetupWasInThePast ? 'Osallistui' : 'Tulossa'
 const textCancel = meetupWasInThePast ? 'Ei osallistunut' : 'Perunut'
 const textAdded = meetupWasInThePast ? 'Lisättiin' : 'Lisätty'
 
@@ -472,7 +468,7 @@ const breadcrumbs = meetup ? [
 				<thead>
 					<tr>
 						<th>#</th>
-						<th>Nimimerkki / julkinen nimi</th>
+						<th>Nimi</th>
 						<th>Osallistuminen</th>
 					</tr>
 				</thead>
@@ -496,8 +492,12 @@ const breadcrumbs = meetup ? [
 
 				td,
 				th {
-					padding: 0.25rem 0.5rem;
+					padding: 0.5rem 1rem;
 					text-align: left;
+				}
+
+				th {
+					font-size: 0.875rem;
 				}
 
 				td:first-child,
@@ -508,6 +508,7 @@ const breadcrumbs = meetup ? [
 				tbody>tr:nth-child(odd)>td {
 					background-color: var(--odd-cell-color);
 				}
+
 				tbody>tr:nth-child(even)>td {
 					background-color: var(--even-cell-color);
 				}

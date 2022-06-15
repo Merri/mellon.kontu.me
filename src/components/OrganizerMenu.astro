@@ -28,6 +28,7 @@ const { meetupId } = Astro.props
 </div>
 <style>
 	.horizontally-scrollable {
+		--focus-color: white;
 		background-color: var(--link-color);
 		background-image:
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0)),
@@ -38,15 +39,15 @@ const { meetupId } = Astro.props
 
 	.organizer {
 		align-items: center;
-		color: white;
+		color: var(--bg-light-color-alt);
 		display: inline-flex;
-		font-size: 0.875rem;
 		gap: 0.5rem;
 		justify-content: flex-end;
 		max-width: 70rem;
 		min-width: max-content;
 		padding: 0.5rem;
-		text-shadow: 0 0 0.25rem black;
+		text-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.5);
+		--webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.5);
 		white-space: nowrap;
 		width: 100%;
 	}

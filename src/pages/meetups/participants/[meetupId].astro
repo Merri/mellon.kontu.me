@@ -1,4 +1,6 @@
 ---
+import JWT from 'jsonwebtoken'
+
 import BaseHead from "$/components/BaseHead.astro"
 import OrganizerMenu from "$/components/OrganizerMenu.astro"
 import { ParticipantRow } from '$/components/ParticipantRow'
@@ -7,12 +9,15 @@ import PageHeader from "$/components/PageHeader.astro"
 import { getMemberIdFromCookie } from "$/lib/auth"
 import { meetupToZonedTime, toZonedTime } from "$/lib/date"
 import { sql } from "$/lib/db"
+import { getRegInfo, getRegLevel } from '$/lib/registration'
+import type { RegLevelType, RegInfo } from '$/lib/registration'
 import NotAuthenticated from '$/pages/401.astro'
 import NotAuthorized from '$/pages/403.astro'
 import type { Meetup, Member, Registration } from "$/types/db"
 import { getOvernightOptions } from '$/lib/meetup'
 import { differenceInDays, endOfDay, startOfDay } from "date-fns"
 import Icon from "$/components/Icon.astro"
+import { getLogger } from "$/lib/bugsnag"
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -37,19 +42,187 @@ const registrations: Registration[] = meetup && member ? await sql<Registration[
 		"id" ASC
 ` : []
 
-const isOwner = meetup != null && member != null && meetup.memberId === member.id
-const isOrganizer =
-	meetup != null && member != null && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
+const hasData = meetup != null && member != null
+const isOwner = hasData && meetup.memberId === member.id
+const isOrganizer = hasData && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
 const hasAccess = isOwner || isOrganizer
 
-const regMemberIds = Array.from(new Set(registrations.map(({ memberId }) => memberId)))
-
-const members = hasAccess ? await sql<Member[]>`SELECT * FROM members WHERE id IN ${sql(regMemberIds)}` : []
+const regMemberIds = hasAccess ? Array.from(new Set(registrations.map(({ memberId }) => memberId))) : []
+const members = regMemberIds.length ? await sql<Member[]>`SELECT * FROM members WHERE id IN ${sql(regMemberIds)}` : []
 
 members.sort(
 	(a, b) =>
 		registrations.findIndex(reg => reg.memberId === a.id) - registrations.findIndex(reg => reg.memberId === b.id)
 )
+
+const isPost = Astro.request.method.toUpperCase() === 'POST'
+
+type ErrorType = 'database-error'
+type SuccessType = 'update-success' | 'nothing-to-update'
+
+const errors = new Set<ErrorType>()
+const success = new Set<SuccessType>()
+
+if (hasAccess && isPost) {
+	const regMap = registrations.reduce<Map<number, Registration>>((map, reg) => {
+		map.set(reg.id, reg)
+		return map
+	}, new Map())
+
+	const regInfoMap = registrations.reduce<Map<number, RegInfo>>((map, reg) => {
+		map.set(reg.id, getRegInfo(reg))
+		return map
+	}, new Map())
+
+	const formData = await Astro.request.formData()
+
+	const levels = new Map<number, { prevLevel: RegLevelType, nextLevel: RegLevelType }>()
+	const overnights = new Map<number, 'bed' | 'camping' | 'dailyVisitor'>()
+	const saunas = new Map<number, 'none' | 'any' | 'male' | 'female' | 'family'>()
+	const markedPaid = new Set<number>()
+
+	for (let [key, value] of formData.entries()) {
+		if (typeof value !== 'string') continue
+
+		const level = /^(level|overnight|sauna|paid)\[(\d+)\]$/.exec(key)
+		if (!level) continue
+		const [_, type, num] = level
+		const oldReg = regMap.get(Number(num))
+		if (!oldReg) continue
+
+		if (type === 'level') {
+			if ((value === 'organizer' || value === 'cancelled' || value === 'confirmed' || value === 'registered')) {
+				const oldLevel = getRegLevel(oldReg)
+				if (oldLevel !== value) levels.set(oldReg.id, { prevLevel: oldLevel, nextLevel: value })
+			}
+		} else if (type === 'overnight') {
+			if (value === 'bed' || value === 'camping' || value === 'dailyVisitor') {
+				const oldOvernight = regInfoMap.get(oldReg.id)?.overnight
+				if (oldOvernight !== value) overnights.set(oldReg.id, value)
+			}
+		} else if (type === 'sauna') {
+			if (value === 'none' || value === 'any' || value === 'male' || value === 'female' || value === 'family') {
+				const oldSauna = regInfoMap.get(oldReg.id)?.sauna
+				if (oldSauna !== value) saunas.set(oldReg.id, value)
+			}
+		} else if (type === 'paid') {
+			if (value === 'yes') markedPaid.add(oldReg.id)
+		}
+	}
+
+	const removePaid = meetup.isFree ? [] : registrations.filter(reg => reg.paid != null && !markedPaid.has(reg.id)).map(({ id }) => id)
+	const addPaid = meetup.isFree ? [] : registrations.filter(reg => reg.paid == null && markedPaid.has(reg.id)).map(({ id }) => id)
+
+	if (levels.size === 0 && overnights.size === 0 && saunas.size === 0 && removePaid.length === 0 && addPaid.length === 0) {
+		success.add('nothing-to-update')
+	} else {
+		try {
+			if (levels.size > 0) {
+				await sql.begin(sql => Array.from(levels.entries()).map(
+					([regId, { prevLevel, nextLevel }]) => {
+						let fields: (
+							| { cancelled: null | Date }
+							| { confirmed: null | Date, cancelled: null | Date }
+							| { registered: Date, confirmed: null | Date, cancelled: null | Date }
+							| { registered: Date, confirmed: null | Date, cancelled: null | Date, isOrganizer: boolean }
+						) = { cancelled: null }
+
+						if (prevLevel === 'organizer') {
+							fields = { ...fields, isOrganizer: false }
+						} else if (prevLevel === 'added') {
+							fields = { ...fields, registered: now }
+						}
+
+						if (nextLevel === 'organizer') {
+							fields = { ...fields, isOrganizer: true }
+						} else if (nextLevel === 'registered') {
+							fields = { ...fields, confirmed: null }
+						} else if (nextLevel === 'confirmed') {
+							fields = { ...fields, confirmed: now }
+						} else if (nextLevel === 'cancelled') {
+							fields = { ...fields, cancelled: now }
+						}
+
+						return sql<Registration[]>`
+							UPDATE registrations
+							SET ${sql(fields)}
+							WHERE "id" = ${regId}
+						`
+					})
+				)
+			}
+
+			if (addPaid.length) {
+				await sql`
+					UPDATE registrations
+					SET "paid" = ${now}
+					WHERE "id" IN ${sql(addPaid)}
+				`
+			}
+
+			if (removePaid.length) {
+				await sql`
+					UPDATE registrations
+					SET "paid" = null
+					WHERE "id" IN ${sql(removePaid)}
+				`
+			}
+
+			const updateInfoRegs = Array.from(new Set([...overnights.keys(), ...saunas.keys()]))
+				.reduce<Map<number, RegInfo>>((map, regId) => {
+					map.set(regId, { ...regInfoMap.get(regId) })
+					return map
+				}, new Map())
+
+			for (let [id, value] of overnights.entries()) {
+				const infoReg = updateInfoRegs.get(id)
+				if (infoReg) infoReg.overnight = value
+			}
+
+			for (let [id, value] of saunas.entries()) {
+				const infoReg = updateInfoRegs.get(id)
+				if (infoReg) infoReg.sauna = value
+			}
+
+			if (updateInfoRegs.size) {
+				await sql.begin(sql => Array.from(updateInfoRegs.entries()).map(
+					([regId, regInfo]) => {
+						const info = JWT.sign(regInfo, import.meta.env.JWT_DATABASE, { algorithm: 'HS256' })
+
+						return sql`
+							UPDATE registrations
+							SET "info" = ${info}
+							WHERE "id" = ${regId}
+						`
+					}
+				))
+			}
+
+			const newRegs = await sql<Registration[]>`
+				SELECT *
+				FROM registrations
+				WHERE "meetupId" = ${meetup.id}
+				ORDER BY "isOrganizer" DESC,
+					"cancelled" ASC NULLS FIRST,
+					"confirmed" ASC NULLS LAST,
+					"registered" ASC NULLS LAST,
+					"id" ASC
+			`
+
+			registrations.length = 0
+			registrations.push(...newRegs)
+
+			success.add('update-success')
+		} catch (error) {
+			if (typeof error === 'string') {
+				errors.add(error as ErrorType)
+			} else if (error instanceof Error) {
+				getLogger().notify(error)
+				errors.add('database-error')
+			}
+		}
+	}
+}
 
 const memberRows = members.map(member => ({
 	memberId: member.id,
@@ -70,7 +243,7 @@ const breadcrumbs = meetup ? [
 	{ title: 'Osallistujat' }
 ] : []
 
-if (hasAccess) {
+if (hasAccess && !isPost) {
 	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
 }
 
@@ -86,34 +259,46 @@ if (hasAccess) {
 	</PageHeader>
 
 	<main id="main">
+		{success.has('update-success') && <div>Muutokset tallennettu!</div>}
+		{success.has('nothing-to-update') && <div>Ei havaittu muutoksia, joten mitään ei tallennettu.</div>}
+		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut! Osa tiedoista
+			saattoi muuttua.</div>}
+
 		<h1>
 			<Icon href="/icons/users-more.svg" size={3.5} /> Osallistujat
 		</h1>
 
-		<div class="horizontally-scrollable">
-			<table>
-				<thead>
-					<tr>
-						<th style="text-align:right" title="Osallistumisjärjestys">#</th>
-						<th style="text-align:left">Osallistuja</th>
-						<th style="text-align:right">Ikä</th>
-						<th>Osallistuminen</th>
-						<th hidden={overnightOptions.length<2}>Yöpyminen</th>
-						<th hidden={!meetup.enableSaunaOption}>Saunatoive</th>
-						<th style="text-align:left">Vastuuhenkilö</th>
-					</tr>
-				</thead>
-				<tbody>
-					{memberRows.map((member, memberIndex) => member.regs.map((reg, index) =>
-					<ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index} reg={reg}
-						regIndex={registrations.findIndex(r=> r === reg)}
-						overnightOptions={overnightOptions} numDays={numDays} sauna={meetup.enableSaunaOption} />))}
-				</tbody>
-			</table>
-		</div>
+		<form action="" method="POST">
+			<div class="horizontally-scrollable">
+				<table>
+					<thead>
+						<tr>
+							<th style="text-align:right" title="Osallistumisjärjestys">#</th>
+							<th style="text-align:left">Osallistuja</th>
+							<th style="text-align:right">Ikä</th>
+							<th>Osallistuminen</th>
+							<th hidden={overnightOptions.length<2}>Yöpyminen</th>
+							<th hidden={!meetup.enableSaunaOption}>Saunatoive</th>
+							<th style="text-align:left">Vastuuhenkilö</th>
+						</tr>
+					</thead>
+					<tbody>
+						{memberRows.map((member, memberIndex) => member.regs.map((reg, index) =>
+						<ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index}
+							reg={reg} regIndex={registrations.findIndex(r=> r === reg)}
+							overnightOptions={overnightOptions} numDays={numDays} sauna={meetup.enableSaunaOption} />))}
+					</tbody>
+				</table>
+			</div>
+			<p style="text-align:center">
+				<button type="submit">
+					<Icon href="/icons/save.svg" />
+					Tallenna muutokset
+				</button>
+			</p>
+		</form>
 		{isOwner && <p>Olet miitin hallinnoija. Sinulta ei voi poistaa tätä oikeutta vaikka et olisi merkattuna miitin
 			järjestäjäksi.</p>}
-		<p>(Pahoittelut, tallentamista ei ole vielä toteutettu.)</p>
 		<style>
 			.horizontally-scrollable {
 				margin: 0 -1rem;

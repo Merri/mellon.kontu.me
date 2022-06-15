@@ -38,15 +38,14 @@ const { links } = Astro.props
 }
 <style>
 	.breadcrumbs-container {
-		background: var(--bg-light-color);
-		border-block: thin solid #694916;
-		margin: 1rem 0 0;
+		background-color: var(--bg-light-color);
+		background-image: linear-gradient(to bottom, white, rgba(255, 255, 255, 0.5) 4px, rgba(255, 255, 255, 0) 50%);
+		border-bottom: thin solid var(--border-color);
 		text-align: center;
 	}
 
 	.breadcrumbs {
 		--link-color: black;
-		font-size: 0.875rem;
 		margin: 0 auto;
 		max-width: 70rem;
 		padding: 0.5rem 0.5rem;
@@ -88,6 +87,10 @@ const { links } = Astro.props
 	}
 
 	@media not all and (min-width: 70em) {
+		.breadcrumbs-container {
+			font-size: 0.875rem;
+		}
+
 		.breadcrumbs {
 			border-inline-width: 0;
 			direction: rtl;

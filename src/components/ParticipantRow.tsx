@@ -1,10 +1,11 @@
-import JWT from 'jsonwebtoken'
 import { createSignal } from 'solid-js'
-import type { JwtPayload } from 'jsonwebtoken'
 import type { JSX } from 'solid-js'
 
-import type { Registration } from '$/types/db'
+import { getRegInfo, getRegLevel } from '$/lib/registration'
+import type { RegLevelType } from '$/lib/registration'
 import { formatPrettyReference } from '$/lib/reference'
+import type { Registration } from '$/types/db'
+
 import { CheckPick } from './CheckPick'
 
 interface ParticipantRowProps {
@@ -23,35 +24,6 @@ interface ParticipantRowProps {
 	sauna: boolean
 }
 
-interface RegInfo extends JwtPayload {
-	name?: string
-	info?: string
-	overnight?: string
-	allergies?: string
-	diet?: string
-	sauna?: string
-}
-
-type RegLevelType = 'organizer' | 'cancelled' | 'confirmed' | 'registered' | 'added'
-
-function getRegLevel(reg: Registration): RegLevelType {
-	if (reg.isOrganizer) return 'organizer'
-	if (reg.cancelled != null) return 'cancelled'
-	if (reg.confirmed != null) return 'confirmed'
-	if (reg.registered != null) return 'registered'
-	return 'added'
-}
-
-function getRegInfo(reg: Registration): RegInfo {
-	if (reg.info) {
-		try {
-			const payload = JWT.verify(reg.info, import.meta.env.JWT_DATABASE, { algorithms: ['HS256'] })
-			if (typeof payload !== 'string') return payload
-		} catch (error) {}
-	}
-
-	return {}
-}
 
 export function ParticipantRow(props: ParticipantRowProps) {
 	const [regLevel, setRegLevel] = createSignal(getRegLevel(props.reg))
@@ -112,7 +84,7 @@ export function ParticipantRow(props: ParticipantRowProps) {
 						: props.numDays}
 					pv:{' '}
 				</small>
-				<select id="overnight" name="overnight[${props.reg.id}]">
+				<select id="overnight" name={`overnight[${props.reg.id}]`}>
 					{!overnightOptions.has(regInfo.overnight || '') && (
 						<option value="" selected>
 							{regInfo.overnight}
