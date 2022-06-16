@@ -67,7 +67,7 @@ const memberRegs = isRegistrationOpen && member
 	: []
 
 type ErrorType = 'database-error'
-type SuccessType = 'level-update-success' | 'no-level-to-update'
+type SuccessType = 'update-success' | 'nothing-to-update'
 
 const errors = new Set<ErrorType>()
 const success = new Set<SuccessType>()
@@ -75,7 +75,7 @@ const success = new Set<SuccessType>()
 if (isSubmit && member) {
 	const formData = await Astro.request.formData()
 
-	const levels = new Map<number, { prevLevel: RegLevelType, nextLevel: RegLevelType }>()
+	const levels = new Map<Registration, RegLevelType>()
 	const days = new Map<number, string[]>(memberRegs.map(reg => [reg.id, []]))
 
 	for (let [key, value] of formData.entries()) {
@@ -89,7 +89,7 @@ if (isSubmit && member) {
 			if (oldReg) {
 				if (value === 'cancelled' || value === 'confirmed' || value === 'registered') {
 					const oldLevel = getRegLevel(oldReg)
-					if (oldLevel !== value) levels.set(id, { prevLevel: oldLevel, nextLevel: value })
+					if (oldLevel !== value) levels.set(oldReg, value)
 				}
 			}
 		}
@@ -111,7 +111,7 @@ if (isSubmit && member) {
 	}
 
 	if (levels.size === 0 && days.size === 0) {
-		success.add('no-level-to-update')
+		success.add('nothing-to-update')
 	} else {
 		try {
 			if (days.size > 0) {
@@ -138,23 +138,23 @@ if (isSubmit && member) {
 
 			if (levels.size > 0) {
 				const updates = (await sql.begin(sql => Array.from(levels.entries()).map(
-					([id, { prevLevel, nextLevel }]) => {
-						let fields: (
-							| { cancelled: null | Date }
-							| { confirmed: null | Date, cancelled: null | Date }
-							| { registered: Date, confirmed: null | Date, cancelled: null | Date }
-						) = { cancelled: null }
-
-						if (prevLevel === 'added') {
-							fields = { registered: now, cancelled: null }
+					([{ id, registered, confirmed, cancelled }, regLevel]) => {
+						const fields: Pick<Registration, 'registered' | 'confirmed' | 'cancelled'> = {
+							registered,
+							confirmed,
+							cancelled,
 						}
 
-						if (nextLevel === 'registered') {
-							fields = { ...fields, confirmed: null }
-						} else if (nextLevel === 'confirmed') {
-							fields = { ...fields, confirmed: now }
-						} else if (nextLevel === 'cancelled') {
-							fields = { ...fields, cancelled: now }
+						if (regLevel === 'organizer' || regLevel === 'confirmed') {
+							if (!registered) fields.registered = now
+							if (!confirmed) fields.confirmed = now
+							if (cancelled) fields.cancelled = null
+						} else if (regLevel === 'registered') {
+							if (!registered) fields.registered = now
+							if (confirmed) fields.confirmed = null
+							if (cancelled) fields.cancelled = null
+						} else if (regLevel === 'cancelled') {
+							if (!cancelled) fields.cancelled = now
 						}
 
 						return sql<Registration[]>`
@@ -178,7 +178,7 @@ if (isSubmit && member) {
 				})
 			}
 
-			success.add('level-update-success')
+			success.add('update-success')
 		} catch (error) {
 			if (typeof error === 'string') {
 				errors.add(error as ErrorType)
@@ -236,8 +236,8 @@ const breadcrumbs = meetup ? [
 	</PageHeader>
 
 	<main id="main">
-		{success.has('level-update-success') && <div>Osallistuminen päivitetty!</div>}
-		{success.has('no-level-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
+		{success.has('update-success') && <div>Osallistuminen päivitetty!</div>}
+		{success.has('nothing-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
 		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut!</div>}
 		{dialog === 'registration-success' && <div>Ilmoittautumisesi on otettu vastaan!</div>}
 		{dialog === 'registration-updated' && <div>Ilmoittautumisesi päivitettiin!</div>}

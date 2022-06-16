@@ -1,23 +1,23 @@
 ---
+import { differenceInDays, endOfDay, startOfDay } from "date-fns"
 import JWT from 'jsonwebtoken'
 
 import BaseHead from "$/components/BaseHead.astro"
+import Icon from "$/components/Icon.astro"
 import OrganizerMenu from "$/components/OrganizerMenu.astro"
 import { ParticipantRow } from '$/components/ParticipantRow'
 import PageFooter from "$/components/PageFooter.astro"
 import PageHeader from "$/components/PageHeader.astro"
 import { getMemberIdFromCookie } from "$/lib/auth"
+import { getLogger } from "$/lib/bugsnag"
 import { meetupToZonedTime, toZonedTime } from "$/lib/date"
 import { sql } from "$/lib/db"
+import { getOvernightOptions } from '$/lib/meetup'
 import { getRegInfo, getRegLevel } from '$/lib/registration'
 import type { RegLevelType, RegInfo } from '$/lib/registration'
 import NotAuthenticated from '$/pages/401.astro'
 import NotAuthorized from '$/pages/403.astro'
 import type { Meetup, Member, Registration } from "$/types/db"
-import { getOvernightOptions } from '$/lib/meetup'
-import { differenceInDays, endOfDay, startOfDay } from "date-fns"
-import Icon from "$/components/Icon.astro"
-import { getLogger } from "$/lib/bugsnag"
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -31,29 +31,25 @@ const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
 	WHERE id = ${meetupId}
 `).map(meetupToZonedTime).pop()
 
-const registrations: Registration[] = meetup && member ? await sql<Registration[]>`
-	SELECT *
-	FROM registrations
-	WHERE "meetupId" = ${meetup.id}
-	ORDER BY "isOrganizer" DESC,
-		"cancelled" ASC NULLS FIRST,
-		"confirmed" ASC NULLS LAST,
-		"registered" ASC NULLS LAST,
-		"id" ASC
-` : []
+async function fetchRegistrations(meetupId: number) {
+	return sql<Registration[]>`
+		SELECT *
+		FROM registrations
+		WHERE "meetupId" = ${meetupId}
+		ORDER BY "isOrganizer" DESC,
+			"cancelled" ASC NULLS FIRST,
+			"confirmed" ASC NULLS LAST,
+			"registered" ASC NULLS LAST,
+			"id" ASC
+	`
+}
+
+const registrations: Registration[] = meetup && member ? await fetchRegistrations(meetup.id) : []
 
 const hasData = meetup != null && member != null
 const isOwner = hasData && meetup.memberId === member.id
 const isOrganizer = hasData && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
 const hasAccess = isOwner || isOrganizer
-
-const regMemberIds = hasAccess ? Array.from(new Set(registrations.map(({ memberId }) => memberId))) : []
-const members = regMemberIds.length ? await sql<Member[]>`SELECT * FROM members WHERE id IN ${sql(regMemberIds)}` : []
-
-members.sort(
-	(a, b) =>
-		registrations.findIndex(reg => reg.memberId === a.id) - registrations.findIndex(reg => reg.memberId === b.id)
-)
 
 const isPost = Astro.request.method.toUpperCase() === 'POST'
 
@@ -76,7 +72,7 @@ if (hasAccess && isPost) {
 
 	const formData = await Astro.request.formData()
 
-	const levels = new Map<number, { prevLevel: RegLevelType, nextLevel: RegLevelType }>()
+	const levels = new Map<Registration, RegLevelType>()
 	const overnights = new Map<number, 'bed' | 'camping' | 'dailyVisitor'>()
 	const saunas = new Map<number, 'none' | 'any' | 'male' | 'female' | 'family'>()
 	const markedPaid = new Set<number>()
@@ -91,9 +87,9 @@ if (hasAccess && isPost) {
 		if (!oldReg) continue
 
 		if (type === 'level') {
-			if ((value === 'organizer' || value === 'cancelled' || value === 'confirmed' || value === 'registered')) {
+			if (value === 'organizer' || value === 'cancelled' || value === 'confirmed' || value === 'registered') {
 				const oldLevel = getRegLevel(oldReg)
-				if (oldLevel !== value) levels.set(oldReg.id, { prevLevel: oldLevel, nextLevel: value })
+				if (oldLevel !== value) levels.set(oldReg, value)
 			}
 		} else if (type === 'overnight') {
 			if (value === 'bed' || value === 'camping' || value === 'dailyVisitor') {
@@ -119,34 +115,30 @@ if (hasAccess && isPost) {
 		try {
 			if (levels.size > 0) {
 				await sql.begin(sql => Array.from(levels.entries()).map(
-					([regId, { prevLevel, nextLevel }]) => {
-						let fields: (
-							| { cancelled: null | Date }
-							| { confirmed: null | Date, cancelled: null | Date }
-							| { registered: Date, confirmed: null | Date, cancelled: null | Date }
-							| { registered: Date, confirmed: null | Date, cancelled: null | Date, isOrganizer: boolean }
-						) = { cancelled: null }
-
-						if (prevLevel === 'organizer') {
-							fields = { ...fields, isOrganizer: false }
-						} else if (prevLevel === 'added') {
-							fields = { ...fields, registered: now }
+					([{ id, registered, confirmed, cancelled }, regLevel]) => {
+						const fields: Pick<Registration, 'registered' | 'confirmed' | 'cancelled' | 'isOrganizer'> = {
+							registered,
+							confirmed,
+							cancelled,
+							isOrganizer: regLevel === 'organizer'
 						}
 
-						if (nextLevel === 'organizer') {
-							fields = { ...fields, isOrganizer: true }
-						} else if (nextLevel === 'registered') {
-							fields = { ...fields, confirmed: null }
-						} else if (nextLevel === 'confirmed') {
-							fields = { ...fields, confirmed: now }
-						} else if (nextLevel === 'cancelled') {
-							fields = { ...fields, cancelled: now }
+						if (regLevel === 'organizer' || regLevel === 'confirmed') {
+							if (!registered) fields.registered = now
+							if (!confirmed) fields.confirmed = now
+							if (cancelled) fields.cancelled = null
+						} else if (regLevel === 'registered') {
+							if (!registered) fields.registered = now
+							if (confirmed) fields.confirmed = null
+							if (cancelled) fields.cancelled = null
+						} else if (regLevel === 'cancelled') {
+							if (!cancelled) fields.cancelled = now
 						}
 
 						return sql<Registration[]>`
 							UPDATE registrations
 							SET ${sql(fields)}
-							WHERE "id" = ${regId}
+							WHERE "id" = ${id}
 						`
 					})
 				)
@@ -198,19 +190,8 @@ if (hasAccess && isPost) {
 				))
 			}
 
-			const newRegs = await sql<Registration[]>`
-				SELECT *
-				FROM registrations
-				WHERE "meetupId" = ${meetup.id}
-				ORDER BY "isOrganizer" DESC,
-					"cancelled" ASC NULLS FIRST,
-					"confirmed" ASC NULLS LAST,
-					"registered" ASC NULLS LAST,
-					"id" ASC
-			`
-
 			registrations.length = 0
-			registrations.push(...newRegs)
+			registrations.push(...(await fetchRegistrations(meetup.id)))
 
 			success.add('update-success')
 		} catch (error) {
@@ -224,13 +205,21 @@ if (hasAccess && isPost) {
 	}
 }
 
+const regMemberIds = hasAccess ? Array.from(new Set(registrations.map(({ memberId }) => memberId))) : []
+const members = regMemberIds.length ? await sql<Member[]>`SELECT * FROM members WHERE id IN ${sql(regMemberIds)}` : []
+
+members.sort(
+	(a, b) =>
+		registrations.findIndex(reg => reg.memberId === a.id) - registrations.findIndex(reg => reg.memberId === b.id)
+)
+
 const memberRows = members.map(member => ({
 	memberId: member.id,
 	publicname: member.publicname,
 	fullname: member.fullname,
 	email: member.email,
 	phone: member.phone,
-	regs: registrations.filter(reg => reg.memberId === member.id)
+	regs: registrations.filter(reg => reg.memberId === member.id).sort((a, b) => a.id - b.id)
 }))
 
 const overnightOptions = getOvernightOptions(meetup)

@@ -70,7 +70,7 @@ if (currentPage) {
 <style>
 	header {
 		background-image:
-			linear-gradient(rgba(0, 0, 0, 0.125), rgba(0, 0, 0, 0.0625) 0.375rem, transparent 1rem),
+			linear-gradient(rgba(0, 0, 0, 0.125), rgba(0, 0, 0, 0.0625) 0.375rem, transparent 2rem),
 			radial-gradient(circle at 50%, white 10rem, var(--bg-light-color-alt) 13rem, var(--border-color) 19rem, var(--bg-light-color));
 		background-size: 100%, 100% 150%;
 		border-bottom: thin solid var(--border-color);
@@ -108,7 +108,8 @@ if (currentPage) {
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.0625), rgba(255, 255, 255, 0)),
 			radial-gradient(circle at 0%, rgba(255, 255, 255, 0.125), rgba(255, 255, 255, 0));
 		border-block: thin solid #694916;
-		box-shadow: inset 0 0 1em rgba(0, 0, 0, 0.375);
+		box-shadow: inset 0 0 1em rgba(0, 0, 0, 0.375), 0 3px 2px rgba(0, 0, 0, 0.125);
+		position: relative;
 	}
 
 	ul a:focus {
@@ -131,6 +132,8 @@ if (currentPage) {
 		--link-color: black;
 		background: var(--bg-light-color-alt);
 		box-shadow: inset 0 0 0 1px var(--border-color), 0 0 0.5rem var(--border-color);
+		margin: 0 -0.375rem;
+		padding: 0.5rem 0.875rem;
 		text-shadow: unset;
 	}
 
