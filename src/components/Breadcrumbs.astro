@@ -42,7 +42,19 @@ const { links } = Astro.props
 		background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.5) 4px, rgba(255, 255, 255, 0) 50%);
 		border-bottom: thin solid var(--border-color);
 		box-shadow: 0 -2px 0 rgba(0, 0, 0, 0.0625);
+		position: relative;
 		text-align: center;
+	}
+
+	.breadcrumbs-container::before {
+		background: url('/assets/noise.png');
+		background-position: center;
+		background-repeat: repeat;
+		content: '';
+		inset: 0;
+		opacity: 0.375;
+		pointer-events: none;
+		position: absolute;
 	}
 
 	.breadcrumbs {

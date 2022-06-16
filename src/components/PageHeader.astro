@@ -80,7 +80,19 @@ if (currentPage) {
 		font-size: 3.75rem;
 		font-weight: bold;
 		padding-block: 1rem;
+		position: relative;
 		text-align: center;
+	}
+
+	header::before {
+		background: url('/assets/noise.png');
+		background-position: center;
+		background-repeat: repeat;
+		content: '';
+		inset: 0;
+		opacity: 0.5;
+		pointer-events: none;
+		position: absolute;
 	}
 
 	header+:global(main) {
@@ -106,10 +118,13 @@ if (currentPage) {
 		background-color: var(--link-color);
 		background-image:
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.0625), rgba(255, 255, 255, 0)),
-			radial-gradient(circle at 0%, rgba(255, 255, 255, 0.125), rgba(255, 255, 255, 0));
+			radial-gradient(circle at 0%, rgba(255, 255, 255, 0.125), rgba(255, 255, 255, 0)),
+			url('/assets/noise.png');
+		background-repeat: repeat;
 		border-block: thin solid #694916;
 		box-shadow: inset 0 0 1em rgba(0, 0, 0, 0.375), 0 3px 2px rgba(0, 0, 0, 0.125);
 		position: relative;
+		z-index: 1;
 	}
 
 	ul a:focus {
