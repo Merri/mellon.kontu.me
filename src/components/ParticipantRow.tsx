@@ -7,6 +7,7 @@ import { formatPrettyReference } from '$/lib/reference'
 import type { Registration } from '$/types/db'
 
 import { CheckPick } from './CheckPick'
+import { Toggle } from './atoms/Toggle'
 
 interface ParticipantRowProps {
 	row: number
@@ -23,7 +24,6 @@ interface ParticipantRowProps {
 	numDays: number
 	sauna: boolean
 }
-
 
 export function ParticipantRow(props: ParticipantRowProps) {
 	const [regLevel, setRegLevel] = createSignal(getRegLevel(props.reg))
@@ -138,14 +138,16 @@ export function ParticipantRow(props: ParticipantRowProps) {
 							Viite:{' '}
 							<code style="display:inline-block">{formatPrettyReference(props.reg.bankReference)}</code>
 							<br />
-							<CheckPick
-								checked={props.reg.paid != null}
-								name={`paid[${props.reg.id}]`}
-								title="Onko maksettu?"
-								value="yes"
-							>
-								Maksettu
-							</CheckPick>
+							<label>
+								Maksettu?{' '}
+								<Toggle
+									checked={props.reg.paid != null}
+									name={`paid[${props.reg.id}]`}
+									no="Ei"
+									yes="On"
+									value="yes"
+								/>
+							</label>
 						</span>
 					)}
 				</td>
