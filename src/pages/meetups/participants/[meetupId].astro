@@ -82,8 +82,8 @@ if (hasAccess && isPost) {
 
 		const level = /^(level|overnight|sauna|paid)\[(\d+)\]$/.exec(key)
 		if (!level) continue
-		const [_, type, num] = level
-		const oldReg = regMap.get(Number(num))
+		const [_, type, regId] = level
+		const oldReg = regMap.get(Number(regId))
 		if (!oldReg) continue
 
 		if (type === 'level') {

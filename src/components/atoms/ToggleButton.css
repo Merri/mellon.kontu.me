@@ -1,0 +1,94 @@
+.toggleButton {
+	--border-size: 0.125rem;
+	--shadow-draw-area: 0.25rem;
+	--toggle-size: 2.5rem;
+	--circle-inset: calc(var(--border-size) + var(shadow-draw-area));
+	--circle-size: calc(var(--toggle-size) - var(--border-size) * 2);
+	--border-radius: calc((var(--toggle-size) + var(shadow-draw-area)) / 2);
+	--toggle-shadow-color: rgba(0, 0, 0, 0.25);
+
+	align-items: center;
+	background-clip: content-box;
+	border: 0;
+	border-radius: var(--border-radius);
+	box-sizing: content-box;
+	contain: content;
+	display: inline-grid;
+	grid-template-columns: 1fr 1fr;
+	font-family: inherit;
+	font-size: 1rem;
+	gap: 0.5rem;
+	height: var(--toggle-size);
+	line-height: 1;
+	margin: var(--shadow-draw-area * -1);
+	padding: var(--shadow-draw-area);
+	position: relative;
+	transition: background-color 125ms ease-in-out, color 125ms ease-in-out;
+	vertical-align: middle;
+	width: 6rem;
+	white-space: nowrap;
+}
+
+.toggleButton:focus {
+	outline-offset: -1px;
+}
+
+.toggleButton::after {
+	background-color: white;
+	border-radius: 50%;
+	box-shadow: 0 3px 6px var(--toggle-shadow-color);
+	content: '';
+	inset: var(--circle-inset);
+	pointer-events: none;
+	position: absolute;
+	height: var(--circle-size);
+	width: var(--circle-size);
+	transition: left 125ms ease-in-out;
+}
+
+.toggleButton > * {
+	display: inline-flex;
+	justify-content: center;
+	min-width: 2rem;
+	pointer-events: none;
+	transform: translateX(0);
+	transition: opacity 125ms ease-in-out, transform 125ms ease-in-out;
+}
+
+.toggleButton[aria-checked='false'] {
+	background-color: #eee;
+	color: var(--text-color);
+}
+
+.toggleButton[aria-checked='false'] > *:first-child {
+	opacity: 0;
+	transform: translateX(var(--circle-size));
+}
+
+.toggleButton[aria-checked='false'] > *:last-child {
+	transform: translateX(-0.75rem);
+}
+
+.toggleButton[aria-checked='true'] {
+	background-color: var(--focus-color);
+	color: white;
+}
+
+.toggleButton[aria-checked='true']::after {
+	left: calc(100% - 2.625rem);
+}
+
+.toggleButton[aria-checked='true'] > *:first-child {
+	transform: translateX(0.75rem);
+}
+
+.toggleButton[aria-checked='true'] > *:last-child {
+	opacity: 0;
+	transform: translateX(calc(var(--circle-size) * -1));
+}
+
+.toggleButton[aria-disabled='true'] {
+	background-color: #bbb;
+	color: white;
+	cursor: not-allowed;
+}

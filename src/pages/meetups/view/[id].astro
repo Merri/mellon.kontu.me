@@ -4,6 +4,7 @@ import locale from 'date-fns/locale/fi/index.js'
 import { format } from 'date-fns-tz';
 import { marked } from 'marked'
 
+import { Toggle } from '$/components/atoms/Toggle';
 import BaseHead from "$/components/BaseHead.astro";
 import { CheckPick } from '$/components/CheckPick';
 import Icon from '$/components/Icon.astro';
@@ -16,7 +17,6 @@ import { meetupToZonedTime, toZonedTime } from '$/lib/date';
 import { sql } from '$/lib/db'
 import { getRegistrationCloseDate } from '$/lib/meetup';
 import { getRegLevel } from '$/lib/registration';
-import type { RegLevelType } from '$/lib/registration';
 import { formatPrettyReference } from '$/lib/reference';
 import ErrorPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from "$/types/db";
@@ -37,15 +37,20 @@ const [{ name: organizerName }] =
 	(meetup?.organizer === 'organization' && meetup.organizationId && await sql<{ name: string }[]>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`) ||
 	[{ name: undefined }]
 
-const registrations = await sql<Registration[]>`
-	SELECT * FROM registrations
-	WHERE "meetupId" = ${id}
-	ORDER BY "isOrganizer" DESC,
-		"cancelled" ASC NULLS FIRST,
-		"confirmed" ASC NULLS LAST,
-		"registered" ASC NULLS LAST,
-		"id" ASC
-`
+async function fetchRegistrations(meetupId: number) {
+	return sql<Registration[]>`
+		SELECT *
+		FROM registrations
+		WHERE "meetupId" = ${meetupId}
+		ORDER BY "isOrganizer" DESC,
+			"cancelled" ASC NULLS FIRST,
+			"confirmed" ASC NULLS LAST,
+			"registered" ASC NULLS LAST,
+			"id" ASC
+	`
+}
+
+const registrations: Registration[] = await fetchRegistrations(id)
 
 const hasData = meetup != null && member != null
 const isOwner = hasData && meetup.memberId === member.id
@@ -73,110 +78,114 @@ const errors = new Set<ErrorType>()
 const success = new Set<SuccessType>()
 
 if (isSubmit && member) {
+	const memberRegMap = memberRegs.reduce<Map<number, Registration>>((map, reg) => {
+		map.set(reg.id, reg)
+		return map
+	}, new Map())
+
 	const formData = await Astro.request.formData()
 
-	const levels = new Map<Registration, RegLevelType>()
+	const markedParticipation = new Set<number>()
 	const days = new Map<number, string[]>(memberRegs.map(reg => [reg.id, []]))
 
 	for (let [key, value] of formData.entries()) {
 		if (typeof value !== 'string') continue
 
-		const item = /^level\[(\d+)\]$/.exec(key)
-		if (item && levels.size < 6) {
-			const [_, num] = item
-			const id = Number(num)
-			const oldReg = memberRegs.find((reg) => reg.id === id)
-			if (oldReg) {
-				if (value === 'cancelled' || value === 'confirmed' || value === 'registered') {
-					const oldLevel = getRegLevel(oldReg)
-					if (oldLevel !== value) levels.set(oldReg, value)
-				}
-			}
-		}
+		const item = /^(level|days)\[(\d+)\]$/.exec(key)
+		if (!item) continue
+		const [_, type, regId] = item
+		const oldReg = memberRegMap.get(Number(regId))
+		if (!oldReg) continue
 
-		const dayItem = meetupInterval && !item && /^days\[(\d+)\]$/.exec(key)
-		if (dayItem) {
-			const [_, num] = dayItem
-			const id = Number(num)
-			if (/^\d\d\d\d-\d\d-\d\d$/.test(value)) {
+		if (type === 'level') {
+			if (value === 'yes') markedParticipation.add(oldReg.id)
+		} else if (type === 'days') {
+			if (meetupInterval && /^\d\d\d\d-\d\d-\d\d$/.test(value)) {
 				const day = new Date(value)
 				if (isWithinInterval(day, meetupInterval)) {
-					if (days.size < 6 || days.has(id)) {
-						const arr = days.get(id) ?? []
-						days.set(id, arr.concat(value))
+					if (days.size < 6 || days.has(oldReg.id)) {
+						const arr = days.get(oldReg.id) ?? []
+						days.set(oldReg.id, arr.concat(value))
 					}
 				}
 			}
 		}
 	}
 
-	if (levels.size === 0 && days.size === 0) {
+	const updateDays: [number, string | null][] = []
+
+	days.forEach((memberDays, regId) => {
+		const reg = memberRegMap.get(regId)
+		if (reg) {
+			const uniqueDays = Array.from(new Set(memberDays)).sort()
+
+			if (uniqueDays.length === meetupDays.length || uniqueDays.length === 0 && reg.cancelled != null && markedParticipation.has(reg.id)) {
+				if (reg.days != null) updateDays.push([regId, null])
+			} else {
+				const days = uniqueDays.join(' ')
+				if (reg.days !== days) updateDays.push([regId, days])
+			}
+		}
+	})
+
+	const removeParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled == null && reg.confirmed != null && !markedParticipation.has(reg.id)).map(({ id }) => id)
+	const addParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled == null && reg.confirmed == null && markedParticipation.has(reg.id)).map(({ id }) => id)
+	const restoreParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled != null && reg.confirmed != null && markedParticipation.has(reg.id)).map(({ id }) => id)
+
+	if (removeParticipation.length === 0 && addParticipation.length === 0 && restoreParticipation.length === 0 && updateDays.length === 0) {
 		success.add('nothing-to-update')
 	} else {
 		try {
-			if (days.size > 0) {
-				const updates = (await sql.begin(sql => Array.from(days.entries()).map(
+			if (updateDays.length > 0) {
+				await sql.begin(sql => updateDays.map(
 					([id, days]) => sql<Registration[]>`
 						UPDATE registrations
-						SET "days" = ${days.length < meetupDays.length ? days.join(' ') : null}
+						SET "days" = ${days}
 						WHERE "id" = ${id}
-						RETURNING *
 					`
-				))).flat()
-
-				if (updates.length === 0) {
-					throw 'database-error'
-				}
-
-				updates.forEach(updated => {
-					const regIndex = registrations.findIndex(reg => reg.id === updated.id)
-					const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
-					registrations[regIndex] = updated
-					memberRegs[memberRegIndex] = updated
-				})
+				))
 			}
 
-			if (levels.size > 0) {
-				const updates = (await sql.begin(sql => Array.from(levels.entries()).map(
-					([{ id, registered, confirmed, cancelled }, regLevel]) => {
-						const fields: Pick<Registration, 'registered' | 'confirmed' | 'cancelled'> = {
-							registered,
-							confirmed,
-							cancelled,
-						}
+			if (addParticipation.length) {
+				await sql`
+					UPDATE registrations
+					SET "confirmed" = ${now}
+					WHERE "id" IN ${sql(addParticipation)};
+				`
 
-						if (regLevel === 'organizer' || regLevel === 'confirmed') {
-							if (!registered) fields.registered = now
-							if (!confirmed) fields.confirmed = now
-							if (cancelled) fields.cancelled = null
-						} else if (regLevel === 'registered') {
-							if (!registered) fields.registered = now
-							if (confirmed) fields.confirmed = null
-							if (cancelled) fields.cancelled = null
-						} else if (regLevel === 'cancelled') {
-							if (!cancelled) fields.cancelled = now
-						}
+				const nobodyHadConfirmedBefore = memberRegs.every(({ confirmed }) => confirmed == null)
+				if (nobodyHadConfirmedBefore) {
 
-						return sql<Registration[]>`
-							UPDATE registrations
-							SET ${sql(fields)}
-							WHERE "id" = ${id}
-							RETURNING *
-						`
-					})
-				)).flat()
-
-				if (updates.length === 0) {
-					throw 'database-error'
 				}
-
-				updates.forEach(updated => {
-					const regIndex = registrations.findIndex(reg => reg.id === updated.id)
-					const memberRegIndex = memberRegs.findIndex(reg => reg.id === updated.id)
-					registrations[regIndex] = updated
-					memberRegs[memberRegIndex] = updated
-				})
 			}
+
+			if (removeParticipation.length) {
+				await sql`
+					UPDATE registrations
+					SET "cancelled" = ${now}
+					WHERE "id" IN ${sql(removeParticipation)}
+				`
+			}
+
+			if (restoreParticipation.length) {
+				await sql`
+					UPDATE registrations
+					SET "cancelled" = null
+					WHERE "id" IN ${sql(restoreParticipation)};
+				`
+			}
+
+			registrations.length = 0
+			memberRegs.length = 0
+
+			const updatedRegs = await fetchRegistrations(id)
+
+			updatedRegs.forEach((reg) => {
+				registrations.push(reg)
+				if (reg.memberId === member.id) memberRegs.push(reg)
+			})
+
+			memberRegs.sort((a, b) => a.id - b.id)
 
 			success.add('update-success')
 		} catch (error) {
@@ -223,7 +232,8 @@ const breadcrumbs = meetup ? [
 
 ---
 
-{meetup ?
+{!meetup ?
+<ErrorPage /> :
 
 <html lang="fi">
 
@@ -245,7 +255,10 @@ const breadcrumbs = meetup ? [
 		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
 		{memberRegs.length > 0 ? <div class="participated">
 			<h2>Olet ilmoittautunut tähän tapahtumaan!</h2>
-			<p>Voit päivittää tässä osallistumisesi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
+			<p>Voit päivittää tietojasi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
+			{memberRegs[0].bankReference && <p>Viitenumero miitin maksamista
+				varten:<br /><strong><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></strong></p>}
+			<p><a href={`/meetups/registration/${meetup.id}`}>Muuta ilmoittautumistietoja</a></p>
 			<form action={`/meetups/view/${meetup.id}`} method="POST">
 				<dl>
 					{memberRegs.map(reg => {
@@ -268,22 +281,13 @@ const breadcrumbs = meetup ? [
 						<dd class="form-field" style="min-width:8.75rem">
 							{regLevel==='organizer' ? <><strong>Järjestäjä</strong><br />Osallistuu</> :
 							<label>
-								Osallistuminen:
-								<select name={`level[${reg.id}]`}>
-									<option value="registered" selected={regLevel==='registered' }>
-										Ei vahvistettu
-									</option>
-									<option value="confirmed" selected={regLevel==='confirmed' }>
-										Osallistuu
-									</option>
-									<option value="cancelled" selected={regLevel==='cancelled' }>
-										Ei osallistu
-									</option>
-								</select>
+								Osallistuu:
+								<Toggle checked={regLevel==='confirmed' } name={`level[${reg.id}]`}
+									no={regLevel==='registered' ? 'Ehkä' : 'Ei' } value="yes" yes="Kyllä" />
 							</label>}
 						</dd>
 						{meetupInterval && <dd class="form-field reg-days">
-							<span>Päivät jos osallistuu:</span><br />
+							<span>Paikalla:</span><br />
 							<span class="dayspicks">
 								{meetupDays.map(date => {
 
@@ -306,9 +310,6 @@ const breadcrumbs = meetup ? [
 					</button>
 				</p>
 			</form>
-			{memberRegs[0].bankReference && <p>Viitenumero miitin maksamista
-				varten:<br /><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></p>}
-			<p><a href={`/meetups/registration/${meetup.id}`}>Tarkasta ilmoittautumisen tiedot</a></p>
 			<style>
 				.dayspicks {
 					display: flex;
@@ -345,7 +346,7 @@ const breadcrumbs = meetup ? [
 					font-weight: bold;
 					flex: 0 1 10rem;
 					margin: 0;
-					padding: 0;
+					padding: 0 0 1rem;
 				}
 
 				.participated dd {
@@ -519,6 +520,4 @@ const breadcrumbs = meetup ? [
 	<PageFooter />
 </body>
 
-</html>
-:
-<ErrorPage />}
+</html>}

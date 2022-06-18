@@ -23,6 +23,6 @@ if (strokeColor) style += `--icon-stroke-color:${strokeColor};`
 ---
 
 <svg aria-hidden={!title || undefined} class="icon" width={size * 16} height={size * 16} style={style || undefined}>
-	{title && <title>${title}</title>}
+	{title && <title>{title}</title>}
 	<use href={`${href}#icon`} />
 </svg>
