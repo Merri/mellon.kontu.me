@@ -286,10 +286,15 @@ const breadcrumbs = meetup ? [
 		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
 		{memberRegs.length > 0 ? <div class="participated">
 			<h2>Olet ilmoittautunut tähän tapahtumaan!</h2>
-			<p>Voit päivittää tietojasi niin kauan aikaa kuin ilmoittautuminen on auki.</p>
+			<p>Voit päivittää tietojasi niin kauan aikaa kuin ilmoittautuminen on auki. {closeDate &&
+				<span>Sulkeutuminen tapahtuu päivän päättyessä {format(closeDate, 'EEEE d.M.yyyy', opts)}.</span>}
+			</p>
 			{memberRegs[0].bankReference && <p>Viitenumero miitin maksamista
 				varten:<br /><strong><code>{formatPrettyReference(memberRegs[0].bankReference)}</code></strong></p>}
-			<p><a href={`/meetups/registration/${meetup.id}`}>Muuta ilmoittautumistietoja</a></p>
+			<p>
+				<a href={`/meetups/registration/${meetup.id}`}>{meetup.enableFamilyMembers && memberRegs.length < 6
+						? 'Muuta tietoja tai ilmoita perhejäseniä' : 'Muuta ilmoittautumistietoja' }</a>
+			</p>
 			<form action={`/meetups/view/${meetup.id}`} method="POST">
 				<dl>
 					{memberRegs.map(reg => {
