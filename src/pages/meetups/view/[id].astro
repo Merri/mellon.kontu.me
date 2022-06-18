@@ -18,8 +18,10 @@ import { sql } from '$/lib/db'
 import { getRegistrationCloseDate } from '$/lib/meetup';
 import { getRegLevel } from '$/lib/registration';
 import { formatPrettyReference } from '$/lib/reference';
-import ErrorPage from '$/pages/404.astro'
+import NotFoundPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from "$/types/db";
+import { getMemberEmailField, sendMail } from '$/lib/email';
+import { getRegistrationCompletedText } from '$/lib/registerToMeetup';
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
@@ -158,8 +160,32 @@ if (isSubmit && member) {
 				`
 
 				const nobodyHadConfirmedBefore = memberRegs.every(({ confirmed }) => confirmed == null)
-				if (nobodyHadConfirmedBefore) {
+				if (meetup && nobodyHadConfirmedBefore) {
+					const [{ name: organizerName }] = (meetup.organizer === 'member' &&
+						(await sql<
+							{ name: string }[]
+							>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`)) ||
+						(meetup.organizer === 'organization' &&
+							meetup.organizationId &&
+							(await sql<
+								{ name: string }[]
+								>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`)) || [
+							{ name: undefined },
+						]
 
+					const text = getRegistrationCompletedText({
+						bankReference: memberRegs[0].bankReference,
+						meetup,
+						organizerName,
+						url: Astro.request.url
+					})
+
+					sendMail({
+						to: getMemberEmailField(member),
+						subject: `✓ Osallistut miittiin!`,
+						text,
+						html: marked.parse(text)
+					})
 				}
 			}
 
@@ -237,7 +263,7 @@ const breadcrumbs = meetup ? [
 ---
 
 {!meetup ?
-<ErrorPage /> :
+<NotFoundPage /> :
 
 <html lang="fi">
 

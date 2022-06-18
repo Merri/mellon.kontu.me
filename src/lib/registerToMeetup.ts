@@ -1,28 +1,35 @@
+import type { Meetup } from '$/types/db'
 import { formatPrettyReference } from './reference'
 
-interface JoinTextProps {
+interface RegCompleteProps {
 	bankReference: string | null
-	meetupId: number
+	meetup: Meetup
 	organizerName?: string
 	url: string
 }
 
-export function getJoinText({ bankReference, meetupId, organizerName, url }: JoinTextProps) {
+export function getRegistrationCompletedText({ bankReference, meetup, organizerName, url }: RegCompleteProps) {
 	return `
 ## Tervehdys Mellonista!
 
-Kiitos, olet ilmoittautunut tapahtumaan!
+Kiitos että osallistut tapahtumaan!
 
 ${bankReference ? `Viitenumerosi maksamista varten: \`${formatPrettyReference(bankReference)}\`` : ''}
 
 Voit milloin tahansa ilmoittautumisten aukioloaikana käydä päivittämässä osallistumisesi osoitteessa
-${new URL(`/meetups/registration/${meetupId}`, url)}
+${new URL(`/meetups/registration/${meetup.id}`, url)}
 
 ${organizerName ? `Terveisin, **${organizerName}**` : ''}
 
 ---
 
-Etkö ilmoittautunut miittiin? Käy vaihtamassa salasanasi osoitteessa ${new URL(`/profile`, url)} sekä
-perumassa osallistumisesi ylempänä näkyvässä linkissä.
+${meetup.description || ''}
+
+${meetup.participantDescription || ''}
+
+---
+
+Tuliko tämä viesti odottamatta ja et olekaan ilmoittautunut miittiin? Käy vaihtamassa salasanasi osoitteessa
+${new URL(`/profile`, url)} sekä perumassa osallistumisesi.
 `
 }

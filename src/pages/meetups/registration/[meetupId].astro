@@ -12,7 +12,7 @@ import { getLogger } from '$/lib/bugsnag'
 import { meetupToZonedTime, toZonedTime } from '$/lib/date'
 import { sql } from '$/lib/db'
 import { getMeetupBankReference, getRegistrationCloseDate } from '$/lib/meetup'
-import ErrorPage from '$/pages/404.astro'
+import NotFoundPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
 
@@ -206,29 +206,6 @@ if (meetup && place) {
 			}
 
 			return Astro.redirect(`/meetups/view/${meetupId}?dialog=${updates.length ? 'registration-updated' : 'registration-success'}`)
-
-			/*
-			const [{ name: organizerName }] = (meetup.organizer === 'member' &&
-				(await sql<
-					{ name: string }[]
-					>`SELECT publicname AS name FROM members WHERE id = ${meetup.memberId}`)) ||
-				(meetup.organizer === 'organization' &&
-					meetup.organizationId &&
-					(await sql<
-						{ name: string }[]
-						>`SELECT name AS name FROM organizations WHERE id = ${meetup.organizationId}`)) || [
-					{ name: undefined },
-				]
-
-			const text = getJoinText({ bankReference, meetupId, organizerName, url: Astro.request.url })
-
-			sendMail({
-				to: getMemberEmailField(member),
-				subject: `Ilmoittautuminen vastaanotettu! (${meetup.title})`,
-				text,
-				html: marked.parse(text),
-			})
-			*/
 		} catch (error) {
 			if (typeof error === 'string') {
 				dialog = error as typeof dialog
@@ -276,7 +253,8 @@ const breadcrumbs = meetup ? [
 
 ---
 
-{meetup && place ? <html lang="fi">
+{!meetup || !place ?
+<NotFoundPage /> : <html lang="fi">
 
 <BaseHead title={`Ilmoittautuminen tapahtumaan ${meetup.title}`}
 	description="Tällä sivulla voit ilmoittautua tapahtumaan" />
@@ -452,5 +430,4 @@ const breadcrumbs = meetup ? [
 	<PageFooter />
 </body>
 
-</html> :
-<ErrorPage />}
+</html>}
