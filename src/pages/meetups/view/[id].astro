@@ -72,7 +72,7 @@ const memberRegs = isRegistrationOpen && member
 	: []
 
 type ErrorType = 'database-error'
-type SuccessType = 'update-success' | 'nothing-to-update'
+type SuccessType = 'cancel-success' | 'update-success' | 'nothing-to-update'
 
 const errors = new Set<ErrorType>()
 const success = new Set<SuccessType>()
@@ -85,6 +85,7 @@ if (isSubmit && member) {
 
 	const formData = await Astro.request.formData()
 
+	const cancelAll = formData.get('cancel') != null
 	const markedParticipation = new Set<number>()
 	const days = new Map<number, string[]>(memberRegs.map(reg => [reg.id, []]))
 
@@ -128,9 +129,12 @@ if (isSubmit && member) {
 		}
 	})
 
-	const removeParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled == null && reg.confirmed != null && !markedParticipation.has(reg.id)).map(({ id }) => id)
-	const addParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled == null && reg.confirmed == null && markedParticipation.has(reg.id)).map(({ id }) => id)
-	const restoreParticipation = memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled != null && reg.confirmed != null && markedParticipation.has(reg.id)).map(({ id }) => id)
+	const removeParticipation = (cancelAll
+		? memberRegs.filter(reg => reg.cancelled == null)
+		: memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled == null && reg.confirmed != null && !markedParticipation.has(reg.id))
+	).map(({ id }) => id)
+	const addParticipation = cancelAll ? [] : memberRegs.filter(reg => !reg.isOrganizer && (reg.cancelled == null && reg.confirmed == null || reg.cancelled != null && reg.confirmed == null) && markedParticipation.has(reg.id)).map(({ id }) => id)
+	const restoreParticipation = cancelAll ? [] : memberRegs.filter(reg => !reg.isOrganizer && reg.cancelled != null && reg.confirmed != null && markedParticipation.has(reg.id)).map(({ id }) => id)
 
 	if (removeParticipation.length === 0 && addParticipation.length === 0 && restoreParticipation.length === 0 && updateDays.length === 0) {
 		success.add('nothing-to-update')
@@ -149,7 +153,7 @@ if (isSubmit && member) {
 			if (addParticipation.length) {
 				await sql`
 					UPDATE registrations
-					SET "confirmed" = ${now}
+					SET "confirmed" = ${now}, "cancelled" = null
 					WHERE "id" IN ${sql(addParticipation)};
 				`
 
@@ -187,7 +191,7 @@ if (isSubmit && member) {
 
 			memberRegs.sort((a, b) => a.id - b.id)
 
-			success.add('update-success')
+			success.add(cancelAll ? 'cancel-success' : 'update-success')
 		} catch (error) {
 			if (typeof error === 'string') {
 				errors.add(error as ErrorType)
@@ -246,6 +250,7 @@ const breadcrumbs = meetup ? [
 	</PageHeader>
 
 	<main id="main">
+		{success.has('cancel-success') && <div>Osallistuminen peruttu.</div>}
 		{success.has('update-success') && <div>Osallistuminen päivitetty!</div>}
 		{success.has('nothing-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
 		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut!</div>}
@@ -287,7 +292,7 @@ const breadcrumbs = meetup ? [
 							</label>}
 						</dd>
 						{meetupInterval && <dd class="form-field reg-days">
-							<span>Paikalla:</span><br />
+							<span>Paikalla:</span>
 							<span class="dayspicks">
 								{meetupDays.map(date => {
 
@@ -304,6 +309,12 @@ const breadcrumbs = meetup ? [
 					</div>})}
 				</dl>
 				<p class="form-field participation-button">
+					<button type="submit" class="button-alt2" name="cancel"
+						onclick="return confirm('Haluatko varmasti perua osallistumisen?')"
+						disabled={memberRegs.every(reg=> reg.cancelled != null)}>
+						<Icon href="/icons/cross.svg" />
+						{memberRegs.length > 1 ? 'Peru osallistumiset' : 'Peru osallistuminen'}
+					</button>
 					<button type="submit" class="button-alt">
 						<Icon href="/icons/refresh.svg" />
 						Päivitä osallistuminen
@@ -312,7 +323,7 @@ const breadcrumbs = meetup ? [
 			</form>
 			<style>
 				.dayspicks {
-					display: flex;
+					display: inline-flex;
 					flex-wrap: wrap;
 					gap: 0rem 0.25rem;
 				}
@@ -326,7 +337,16 @@ const breadcrumbs = meetup ? [
 				}
 
 				.participation-button {
-					text-align: right;
+					display: flex;
+					flex-wrap: wrap;
+					gap: 0.5rem;
+					justify-content: space-between;
+				}
+
+				@media not all and (min-width: 40rem) {
+					.participation-button>* {
+						flex-grow: 1;
+					}
 				}
 
 				.participated dl {

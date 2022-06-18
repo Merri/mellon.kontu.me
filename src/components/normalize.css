@@ -115,7 +115,7 @@
 	filter: brightness(1.0625);
 }
 
-:is(button, .button):active {
+:is(button, .button):not(:disabled):not([aria-disabled='true' i]):active {
 	--icon-shade-color: rgba(96, 48, 32, 0.275);
 	box-shadow: -0.125rem -0.125rem 0.25rem rgba(0, 0, 0, 0.125), inset 1px 1px 2px white,
 		inset -1px -1px 2px rgba(0, 0, 0, 0.25);
@@ -125,6 +125,7 @@
 
 :is(button, .button):disabled {
 	filter: saturate(0.25);
+	opacity: 0.75;
 }
 
 body {
@@ -151,7 +152,8 @@ main {
 	text-underline-offset: 2px;
 }
 
-:where(:disabled, [aria-disabled='true' i]) {
+:disabled,
+[aria-disabled='true' i] {
 	cursor: not-allowed;
 }
 
