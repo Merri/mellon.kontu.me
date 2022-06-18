@@ -33,6 +33,8 @@ const menuItems: MenuItem[] = [{
 	title: 'Omat tiedot'
 }]
 
+const isPreview = import.meta.env.PREVIEW === 'true'
+
 const currentPageHref = new URL(Astro.request.url).pathname
 const currentPage = menuItems.find(item => item.href === currentPageHref)
 
@@ -63,8 +65,8 @@ if (currentPage) {
 		</li>)}
 	</ul>
 </nav>
-<header class={import.meta.env.DEV ? 'test-environment' : undefined}>
-	<img alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
+<header class={isPreview ? 'test-environment' : undefined}>
+	<img class="logo" alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
 	Mellon
 </header>
 <Breadcrumbs links={breadcrumbs}>
@@ -84,9 +86,19 @@ if (currentPage) {
 		text-align: center;
 	}
 
+	.logo {
+		mix-blend-mode: multiply;
+	}
+
 	.test-environment {
 		background-image: url('/assets/under-construction.gif');
-		background-position: right center;
+		background-position: 1rem center;
+	}
+
+	@media (max-width: 30em) {
+		.test-environment {
+			background-position: -1rem center;
+		}
 	}
 
 	header::before {

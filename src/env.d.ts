@@ -25,6 +25,8 @@ interface ImportMetaEnv {
 	readonly SECONDARY_EMAIL_FROM: string
 	readonly SECONDARY_EMAIL_USER: string
 	readonly SECONDARY_EMAIL_PW: string
+
+	readonly PREVIEW?: 'true'
 }
 
 interface ImportMeta {
