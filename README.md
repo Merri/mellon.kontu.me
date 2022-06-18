@@ -31,7 +31,8 @@ During development this project requires a `.env` file. The following keys are r
 
 ```env
 BUGSNAG_API_KEY=""
-JWT_SECRET="DevelopmentSecretForYourEyesOnly"
+JWT_DATABASE="SecretForJwtStoredToDatabase"
+JWT_SECRET="SecretForTheVariousAuthJwts"
 TOMTOM_API_KEY=""
 
 POSTGRES_HOST="localhost"

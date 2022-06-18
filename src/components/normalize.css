@@ -87,9 +87,21 @@
 	justify-content: center;
 	min-width: 12rem;
 	padding: 0.5rem 1.5rem;
+	position: relative;
 	user-select: none;
 	text-shadow: -1px -1px 2px rgba(255, 255, 255, 0.75), 1px 1px 1px rgba(0, 0, 0, 0.0625);
 	transform: translateY(0);
+}
+
+:is(button, .button)::before {
+	background: url('/assets/noise.png');
+	background-repeat: repeat;
+	border-radius: inherit;
+	content: '';
+	inset: 0;
+	opacity: 0.5;
+	pointer-events: none;
+	position: absolute;
 }
 
 :is(button, .button) svg {

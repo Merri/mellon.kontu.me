@@ -309,7 +309,7 @@ const breadcrumbs = meetup ? [
 					</div>})}
 				</dl>
 				<p class="form-field participation-button">
-					<button type="submit" class="button-alt2" name="cancel"
+					<button type="submit" class="button-alt2 cancel-button" name="cancel"
 						onclick="return confirm('Haluatko varmasti perua osallistumisen?')"
 						disabled={memberRegs.every(reg=> reg.cancelled != null)}>
 						<Icon href="/icons/cross.svg" />
@@ -317,11 +317,15 @@ const breadcrumbs = meetup ? [
 					</button>
 					<button type="submit" class="button-alt">
 						<Icon href="/icons/refresh.svg" />
-						Päivitä osallistuminen
+						{memberRegs.length > 1 ? 'Päivitä osallistumiset' : 'Päivitä osallistuminen'}
 					</button>
 				</p>
 			</form>
 			<style>
+				.cancel-button {
+					--icon-stroke-color: var(--error-color);
+				}
+
 				.dayspicks {
 					display: inline-flex;
 					flex-wrap: wrap;
@@ -331,7 +335,7 @@ const breadcrumbs = meetup ? [
 				.participated {
 					background: var(--bg-light-color-alt);
 					border: thin solid var(--border-color);
-					border-radius: 1rem;
+					border-radius: 0.5rem;
 					margin: 2rem 0;
 					padding: 0 1.5rem;
 				}
