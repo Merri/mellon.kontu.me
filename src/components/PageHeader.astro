@@ -68,6 +68,7 @@ if (currentPage) {
 <header class={isPreview ? 'test-environment' : undefined}>
 	<img class="logo" alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
 	Mellon
+	{isPreview && <small class="test-environment-text"><span>Testiympäristö</span></small>}
 </header>
 <Breadcrumbs links={breadcrumbs}>
 	<slot />
@@ -99,6 +100,26 @@ if (currentPage) {
 		.test-environment {
 			background-position: -1rem center;
 		}
+	}
+
+	.test-environment-text {
+		font-size: 1rem;
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0.25rem;
+	}
+
+	.test-environment-text > span {
+		background: yellow;
+		border-radius: 0.375rem;
+		box-shadow: 0 0 0 1px var(--error-color);
+		color: var(--error-color);
+		display: inline-block;
+		font-family: var(--font-sans-serif);
+		letter-spacing: 0.25rem;
+		line-height: 1;
+		padding: 0.375rem 1rem;
 	}
 
 	header::before {
