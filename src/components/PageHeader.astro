@@ -63,7 +63,7 @@ if (currentPage) {
 		</li>)}
 	</ul>
 </nav>
-<header>
+<header class={import.meta.env.DEV ? 'test-environment' : undefined}>
 	<img alt="" aria-hidden="true" height="73" width="73" src="/assets/2018-07-14_tengwa_mellon.png" />
 	Mellon
 </header>
@@ -82,6 +82,11 @@ if (currentPage) {
 		padding-block: 1rem;
 		position: relative;
 		text-align: center;
+	}
+
+	.test-environment {
+		background-image: url('/assets/under-construction.gif');
+		background-position: right center;
 	}
 
 	header::before {
