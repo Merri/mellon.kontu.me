@@ -8,6 +8,7 @@ import { getJwtPayload, getMemberIdFromCookie } from "$/lib/auth";
 import { getLogger } from "$/lib/bugsnag";
 import { sql } from "$/lib/db";
 import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
+import { isString } from "$/lib/types";
 import type { Member } from "$/types/db";
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
@@ -89,7 +90,7 @@ const breadcrumbs = [
 const notifications: string[] = [
 	dialog === 'database-failure' && 'Salasanan tallentamisessa tapahtui virhe. Salasana ei mahdollisesti vaihtunut.',
 	errors.has('newPassword') && 'Uudet salasanat eivät täsmää.'
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

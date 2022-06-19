@@ -5,6 +5,7 @@ import locale from 'date-fns/locale/fi/index.js'
 import type { Meetup, Member } from '$/types/db'
 
 import { asFinnishRefNumber } from './reference'
+import { isString } from './types'
 
 interface MeetupDateOptions {
 	format: string
@@ -18,11 +19,9 @@ export function getOvernightOptions(meetup?: Meetup): string[] {
 	if (!meetup) return []
 	if (!meetup.begin || !meetup.end) return []
 	if (isSameDay(meetup.begin, meetup.end)) return []
-	return [
-		'bed',
-		meetup.enableDailyVisitors && 'dailyVisitor',
-		meetup.enableCampingMembers && 'camping'
-	].filter((x): x is string => typeof x === 'string')
+	return ['bed', meetup.enableDailyVisitors && 'dailyVisitor', meetup.enableCampingMembers && 'camping'].filter(
+		isString
+	)
 }
 
 export function getMeetupBankReference({ meetup, member, now }: { meetup: Meetup; member: Member; now: Date }) {

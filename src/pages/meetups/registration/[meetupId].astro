@@ -16,6 +16,7 @@ import NotFoundPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
 import Notification from '$/components/atoms/Notification.astro'
+import { isString } from '$/lib/types'
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -262,7 +263,7 @@ const notifications: string[] = [
 	dialog === 'no-data' && 'Odottamaton virhe: ei ilmoittautuneita!',
 	dialog === 'invalid-removal-request' && 'Annettujen tietojen perusteella ilmoittautuneita pitäisi poistaa. Tämä ei ole sallittua, eikä tätä pitäisi tapahtua. [Ilmoita kehittäjälle](mailto:mellon@kontu.me) mikäli sait tämän virheilmoituksen normaalikäytössä!',
 	dialog === 'profile-data-missing' && 'Tiedoistasi puuttuu olennaisia tietoja kuten julkinen nimi tai syntymäpäivä. [Käy täyttämässä puuttuvat tiedot](/profile).'
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

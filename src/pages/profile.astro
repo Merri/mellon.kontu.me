@@ -6,6 +6,7 @@ import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
 import { getClearCookie, getMemberIdFromCookie } from "$/lib/auth";
 import { sql } from "$/lib/db";
+import { isString } from "$/lib/types";
 import { Member } from "$/types/db";
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
@@ -49,7 +50,7 @@ const notifications: string[] = [
 	showLoginInvalidEmail && 'Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.',
 	showEmailUpdateCompleted && 'Sähköpostiosoitteesi on nyt vaihdettu!',
 	dialog === 'email-update-failed' && (member ? 'Valitettavasti sähköpostiosoitteesi vaihtaminen ei onnistunut.' : 'Sähköpostiosoitteen vaihtaminen ei onnistunut, koska et ole kirjautunut.')
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

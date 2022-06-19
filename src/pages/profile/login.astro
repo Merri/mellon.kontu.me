@@ -5,6 +5,7 @@ import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
 import { getJwtPayload, getMemberIdFromCookie, getLoginCookieToken, getClearCookie } from "$/lib/auth";
 import { sql } from "$/lib/db";
+import { isString } from "$/lib/types";
 import type { Member } from "$/types/db";
 
 const cookie = Astro.request.headers.get('cookie')
@@ -43,7 +44,7 @@ const breadcrumbs = [
 
 const notifications: string[] = [
 	dialog === 'login-failed' && 'Kirjautuminen ei onnistunut.',
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

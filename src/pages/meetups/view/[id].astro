@@ -23,6 +23,7 @@ import type { Meetup, Member, Place, Registration } from "$/types/db";
 import { getMemberEmailField, sendMail } from '$/lib/email';
 import { getRegistrationCompletedText } from '$/lib/registerToMeetup';
 import Notification from '$/components/atoms/Notification.astro';
+import { isString } from '$/lib/types';
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
@@ -268,7 +269,7 @@ const notifications: string[] = [
 	errors.has('database-error') && 'Odottamaton virhe: tietokannan päivittäminen ei onnistunut!',
 	dialog === 'registration-success' && 'Ilmoittautumisesi on otettu vastaan!',
 	dialog === 'registration-updated' && 'Ilmoittautumisesi päivitettiin!'
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

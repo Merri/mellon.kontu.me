@@ -19,6 +19,7 @@ import NotAuthenticated from '$/pages/401.astro'
 import NotAuthorized from '$/pages/403.astro'
 import type { Meetup, Member, Registration } from "$/types/db"
 import Notification from "$/components/atoms/Notification.astro"
+import { isString } from "$/lib/types"
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -241,7 +242,7 @@ const notifications: string[] = [
 	success.has('update-success') && 'Muutokset tallennettu!',
 	success.has('nothing-to-update') && 'Ei havaittu muutoksia, joten mitään ei tallennettu.',
 	errors.has('database-error') && 'Odottamaton virhe: tietokannan päivittäminen ei onnistunut! Osa tiedoista saattoi muuttua.',
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

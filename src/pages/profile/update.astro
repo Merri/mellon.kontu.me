@@ -12,6 +12,7 @@ import { sql } from "$/lib/db";
 import { getMemberEmailField, sendMail } from '$/lib/email';
 import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
 import type { Member } from "$/types/db";
+import { isString } from '$/lib/types';
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
 const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
@@ -138,7 +139,7 @@ const notifications: string[] = [
 	dialog === 'update-failure' && 'Muutosten tallentamisessa tapahtui virhe.',
 	dialog === 'password-failure' && 'Salasanan varmistamisessa tapahtui virhe.',
 	(errors.has('password') && errors.size === 1 && 'Tarkista salasana.') || (errors.size > 0 && 'Kentissä on virheitä. Tarkista korostetut kentät.')
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 ---
 

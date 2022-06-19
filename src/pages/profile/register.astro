@@ -5,6 +5,7 @@ import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
 import { getJwtPayload, getMemberIdFromCookie, getLoginCookie, getLoginCookieToken, getClearCookie } from "$/lib/auth";
 import { sql } from "$/lib/db";
+import { isString } from "$/lib/types";
 import type { Member } from "$/types/db";
 
 const cookie = Astro.request.headers.get('cookie')
@@ -45,7 +46,7 @@ const notifications: string[] = [
 	dialog === 'create-user-failed' && 'Tunnuksen luomisessa tapahtui tuntematon virhe.',
 	dialog === 'invalid-data' && 'Tarkista että syöttämäsi tiedot ovat kohdillaan, kaikki vaaditut kentät on annettu, ja että salasanat täsmäävät.',
 	dialog === 'password-failure' && 'Tunnusta luotaessa tapahtui virhe salasanan käsittelyssä. Yritä uudelleen.',
-].filter((x): x is string => typeof x === 'string')
+].filter(isString)
 
 
 ---
