@@ -15,6 +15,7 @@ import { getMeetupBankReference, getRegistrationCloseDate } from '$/lib/meetup'
 import NotFoundPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
+import Notification from '$/components/atoms/Notification.astro'
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -252,6 +253,17 @@ const breadcrumbs = meetup ? [
 	{ title: 'Ilmoittautuminen' }
 ] : []
 
+const notifications: string[] = [
+	errors.has('person') && 'Odottamaton virhe: ilmoittautujan tiedot puuttuivat kokonaan!',
+	errors.has('publicname') && 'Tarkista että kaikilla ilmoittautujilla on julkinen nimi.',
+	errors.has('name') && 'Tarkista että olet antanut kaikille ilmoittautujille nimen. Varmista että olet ilmoittanut nimesi [tiedoissasi](/profile).',
+	errors.has('age') && 'Tarkista että kaikille ilmoittautujille on annettu ikä.',
+	dialog === 'database-failure' && 'Odottamaton virhe: ilmoittautumisen lisääminen tietokantaan epäonnistui!',
+	dialog === 'no-data' && 'Odottamaton virhe: ei ilmoittautuneita!',
+	dialog === 'invalid-removal-request' && 'Annettujen tietojen perusteella ilmoittautuneita pitäisi poistaa. Tämä ei ole sallittua, eikä tätä pitäisi tapahtua. [Ilmoita kehittäjälle](mailto:mellon@kontu.me) mikäli sait tämän virheilmoituksen normaalikäytössä!',
+	dialog === 'profile-data-missing' && 'Tiedoistasi puuttuu olennaisia tietoja kuten julkinen nimi tai syntymäpäivä. [Käy täyttämässä puuttuvat tiedot](/profile).'
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 {!meetup || !place ?
@@ -265,19 +277,7 @@ const breadcrumbs = meetup ? [
 
 	{isRegistrationOpen ?
 	<main id="main">
-		{errors.has('person') && <div>Odottamaton virhe: ilmoittautujan tiedot puuttuivat kokonaan!</div>}
-		{errors.has('publicname') && <div>Tarkista että kaikilla ilmoittautujilla on julkinen nimi.</div>}
-		{errors.has('name') && <div>Tarkista että olet antanut kaikille ilmoittautujille nimen. Varmista että olet
-			ilmoittanut nimesi <a href="/profile">tiedoissasi</a>.</div>}
-		{errors.has('age') && <div>Tarkista että kaikille ilmoittautujille on annettu ikä.</div>}
-		{dialog === 'database-failure' && <div>Odottamaton virhe: ilmoittautumisen lisääminen tietokantaan epäonnistui!
-		</div>}
-		{dialog === 'no-data' && <div>Odottamaton virhe: ei ilmoittautuneita!</div>}
-		{dialog === 'invalid-removal-request' && <div>Annettujen tietojen perusteella ilmoittautuneita pitäisi poistaa.
-			Tämä ei ole sallittua, eikä tätä pitäisi tapahtua. <a href="mailto:mellon@kontu.me">Ilmoita kehittäjälle</a>
-			mikäli sait tämän virheilmoituksen normaalikäytössä!</div>}
-		{dialog === 'profile-data-missing' && <div>Tiedoistasi puuttuu olennaisia tietoja kuten julkinen nimi tai
-			syntymäpäivä. <a href="/profile">Käy täyttämässä puuttuvat tiedot</a>.</div> }
+		<Notification messages={notifications} title="Tapahtui virhe" />
 
 		<h1>{meetup.title}</h1>
 		<p>

@@ -22,6 +22,7 @@ import NotFoundPage from '$/pages/404.astro'
 import type { Meetup, Member, Place, Registration } from "$/types/db";
 import { getMemberEmailField, sendMail } from '$/lib/email';
 import { getRegistrationCompletedText } from '$/lib/registerToMeetup';
+import Notification from '$/components/atoms/Notification.astro';
 
 const opts = { locale, timeZone: 'Europe/Helsinki' }
 
@@ -260,6 +261,15 @@ const breadcrumbs = meetup ? [
 	{ title: meetup.title }
 ] : []
 
+const notifications: string[] = [
+	success.has('cancel-success') && 'Osallistuminen peruttu.',
+	success.has('update-success') && 'Osallistuminen päivitetty!',
+	success.has('nothing-to-update') && 'Osallistumistietoja ei tarvinnut päivittää.',
+	errors.has('database-error') && 'Odottamaton virhe: tietokannan päivittäminen ei onnistunut!',
+	dialog === 'registration-success' && 'Ilmoittautumisesi on otettu vastaan!',
+	dialog === 'registration-updated' && 'Ilmoittautumisesi päivitettiin!'
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 {!meetup ?
@@ -276,12 +286,7 @@ const breadcrumbs = meetup ? [
 	</PageHeader>
 
 	<main id="main">
-		{success.has('cancel-success') && <div>Osallistuminen peruttu.</div>}
-		{success.has('update-success') && <div>Osallistuminen päivitetty!</div>}
-		{success.has('nothing-to-update') && <div>Osallistumistietoja ei tarvinnut päivittää.</div>}
-		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut!</div>}
-		{dialog === 'registration-success' && <div>Ilmoittautumisesi on otettu vastaan!</div>}
-		{dialog === 'registration-updated' && <div>Ilmoittautumisesi päivitettiin!</div>}
+		<Notification messages={notifications} title={errors.size ? 'Tapahtui virhe' : undefined} />
 		<h1 style="margin-bottom:0">{meetup.title}</h1>
 		{organizerName && <div><small>Järjestäjä: <strong>{organizerName}</strong></small></div>}
 		{memberRegs.length > 0 ? <div class="participated">

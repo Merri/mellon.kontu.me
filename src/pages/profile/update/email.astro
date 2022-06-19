@@ -11,6 +11,7 @@ import { getMemberEmailField, sendMail } from '$/lib/email';
 import { passwordHashAndSalt } from "$/lib/passwordHashAndSalt";
 import type { Member } from "$/types/db";
 import Icon from '$/components/Icon.astro';
+import Notification from '$/components/atoms/Notification.astro';
 
 const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
 const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
@@ -114,6 +115,11 @@ const breadcrumbs = [
 	{ title: 'Sähköpostin päivittäminen' }
 ]
 
+const notifications: string[] = [
+	dialog === 'password-failure' && 'Salasanan varmistamisessa tapahtui virhe.',
+	(errors.has('password') && errors.size === 1 && 'Tarkista salasana.') || (errors.size > 0 && 'Tarkista sähköposti.')
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 <html lang="fi">
@@ -124,9 +130,7 @@ const breadcrumbs = [
 	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
-		{dialog === 'password-failure' && <div>Salasanan varmistamisessa tapahtui virhe.</div>}
-		{(errors.has('password') && errors.size === 1 && <div>Tarkista salasana.</div>) || (errors.size > 0 && <div>
-			Tarkista sähköposti.</div>)}
+		<Notification messages={notifications} title="Tapahtui virhe" />
 		<h1>Sähköpostiosoitteen päivittäminen</h1>
 		{dialog !== 'success' ? <form action="/profile/update/email" method="POST">
 			<p class="form-field">

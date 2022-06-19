@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import { phone as validatePhoneNumber } from 'phone'
 
+import Notification from '$/components/atoms/Notification.astro';
 import BaseHead from "$/components/BaseHead.astro";
 import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
@@ -133,6 +134,12 @@ const breadcrumbs = [
 	{ title: 'Tietojen päivittäminen' }
 ]
 
+const notifications: string[] = [
+	dialog === 'update-failure' && 'Muutosten tallentamisessa tapahtui virhe.',
+	dialog === 'password-failure' && 'Salasanan varmistamisessa tapahtui virhe.',
+	(errors.has('password') && errors.size === 1 && 'Tarkista salasana.') || (errors.size > 0 && 'Kentissä on virheitä. Tarkista korostetut kentät.')
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 <html lang="fi">
@@ -143,13 +150,8 @@ const breadcrumbs = [
 	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
-		{dialog === 'update-failure' && <div>Muutosten tallentamisessa tapahtui virhe.</div>}
-		{dialog === 'password-failure' && <div>Salasanan varmistamisessa tapahtui virhe.</div>}
-		{(errors.has('password') && errors.size === 1 && <div>Tarkista salasana.</div>) || (errors.size > 0 && <div>
-			Kentissä on virheitä. Tarkista korostetut kentät.</div>)}
-
+		<Notification messages={notifications} title="Tapahtui virhe" />
 		<h1>Tietojen päivittäminen</h1>
-
 		<form action="/profile/update" method="POST">
 			<p class="form-field">
 				<label>Julkinen nimi / nimimerkki: <input id="publicname" aria-describedby="description-publicname"

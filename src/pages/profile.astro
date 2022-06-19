@@ -1,4 +1,5 @@
 ---
+import Notification from "$/components/atoms/Notification.astro";
 import BaseHead from "$/components/BaseHead.astro";
 import Icon from "$/components/Icon.astro";
 import PageFooter from "$/components/PageFooter.astro";
@@ -36,6 +37,20 @@ const breadcrumbs = [
 	{ title: 'Omat tiedot' }
 ]
 
+const notifications: string[] = [
+	showLoginFailed && 'Salasanaa tarkastaessa tapahtui odottamaton virhe, joten kirjautuminen ei onnistunut.',
+	showInvalidLoginToken && 'Virheellinen tai vanhentunut kirjautumistunniste.',
+	showRegisterCompleted && 'Kiitos tunnuksen luomisesta! Voit nyt ilmoittautua miitteihin.',
+	showLoginCompleted && 'Sinut on kirjattu sisään!',
+	showUpdateCompleted && 'Tietojen päivitys onnistui!',
+	showLoggedOut && 'Sinut on kirjattu ulos!',
+	showLoginLinkEmailSent && 'Kirjautumislinkki on lähetetty sähköpostiisi ja sen pitäisi saapua pian. Viesti saattaa viipyä matkalla mm. työpaikkojen sähköpostien turvatarkistuksien vuoksi. Jos viesti ei saavu perille, niin yritä uudelleen tai kokeile eri sähköpostiosoitetta.',
+	showLoginInvalidCredentials && 'Kirjautuminen ei onnistunut: väärä salasana tai sähköpostiosoite.',
+	showLoginInvalidEmail && 'Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.',
+	showEmailUpdateCompleted && 'Sähköpostiosoitteesi on nyt vaihdettu!',
+	dialog === 'email-update-failed' && (member ? 'Valitettavasti sähköpostiosoitteesi vaihtaminen ei onnistunut.' : 'Sähköpostiosoitteen vaihtaminen ei onnistunut, koska et ole kirjautunut.')
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 <html lang="fi">
@@ -45,25 +60,8 @@ const breadcrumbs = [
 <body>
 	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
-		{showLoginFailed && <div>Salasanaa tarkastaessa tapahtui odottamaton virhe, joten kirjautuminen ei onnistunut.
-		</div>}
-		{showInvalidLoginToken && <div>Virheellinen tai vanhentunut kirjautumistunniste.</div>}
-		{showRegisterCompleted && <div>Kiitos tunnuksen luomisesta! Voit nyt ilmoittautua miitteihin.</div>}
-		{showLoginCompleted && <div>Sinut on kirjattu sisään!</div>}
-		{showUpdateCompleted && <div>Tietojen päivitys onnistui!</div>}
-		{showLoggedOut && <div>Sinut on kirjattu ulos!</div>}
-		{showLoginLinkEmailSent && <div>Kirjautumislinkki on lähetetty sähköpostiisi ja sen pitäisi saapua pian. Viesti
-			saattaa viipyä matkalla mm. työpaikkojen sähköpostien turvatarkistuksien vuoksi. Jos viesti ei saavu
-			perille, niin yritä uudelleen tai kokeile eri sähköpostiosoitetta.</div>}
-		{showLoginInvalidCredentials && <div>Kirjautuminen ei onnistunut: väärä salasana tai sähköpostiosoite.</div>}
-		{showLoginInvalidEmail && <div>Kirjautuminen ei onnistunut: sähköpostiosoite ei näyttänyt sähköpostiosoitteelta.
-		</div>}
-		{showEmailUpdateCompleted && <div>Sähköpostiosoitteesi on nyt vaihdettu!</div>}
-		{dialog === 'email-update-failed' && (member ? <div>Valitettavasti sähköpostiosoitteesi vaihtaminen ei
-			onnistunut.</div> : <div>Sähköpostiosoitteen vaihtaminen ei onnistunut, koska et ole kirjautunut.</div>)}
-
+		<Notification messages={notifications} />
 		<h1>Omat tiedot</h1>
-
 		{member ? <div>
 			<form action="/profile/logout" method="POST"
 				style="align-items:center;display:flex;flex-wrap:wrap;gap:1rem">

@@ -18,6 +18,7 @@ import type { RegLevelType, RegInfo } from '$/lib/registration'
 import NotAuthenticated from '$/pages/401.astro'
 import NotAuthorized from '$/pages/403.astro'
 import type { Meetup, Member, Registration } from "$/types/db"
+import Notification from "$/components/atoms/Notification.astro"
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -236,6 +237,12 @@ if (hasAccess && !isPost) {
 	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
 }
 
+const notifications: string[] = [
+	success.has('update-success') && 'Muutokset tallennettu!',
+	success.has('nothing-to-update') && 'Ei havaittu muutoksia, joten mitään ei tallennettu.',
+	errors.has('database-error') && 'Odottamaton virhe: tietokannan päivittäminen ei onnistunut! Osa tiedoista saattoi muuttua.',
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 {(hasAccess && <html lang="fi">
@@ -248,10 +255,7 @@ if (hasAccess && !isPost) {
 	</PageHeader>
 
 	<main id="main">
-		{success.has('update-success') && <div>Muutokset tallennettu!</div>}
-		{success.has('nothing-to-update') && <div>Ei havaittu muutoksia, joten mitään ei tallennettu.</div>}
-		{errors.has('database-error') && <div>Odottamaton virhe: tietokannan päivittäminen ei onnistunut! Osa tiedoista
-			saattoi muuttua.</div>}
+		<Notification messages={notifications} title={errors.size ? 'Tapahtui virhe' : undefined} />
 
 		<h1>
 			<Icon href="/icons/users-more.svg" size={3.5} /> Osallistujat

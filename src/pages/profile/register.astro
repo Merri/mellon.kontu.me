@@ -1,4 +1,5 @@
 ---
+import Notification from "$/components/atoms/Notification.astro";
 import BaseHead from "$/components/BaseHead.astro";
 import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
@@ -40,6 +41,13 @@ const breadcrumbs = [
 	{ title: 'Ensimmäinen kirjautuminen' }
 ]
 
+const notifications: string[] = [
+	dialog === 'create-user-failed' && 'Tunnuksen luomisessa tapahtui tuntematon virhe.',
+	dialog === 'invalid-data' && 'Tarkista että syöttämäsi tiedot ovat kohdillaan, kaikki vaaditut kentät on annettu, ja että salasanat täsmäävät.',
+	dialog === 'password-failure' && 'Tunnusta luotaessa tapahtui virhe salasanan käsittelyssä. Yritä uudelleen.',
+].filter((x): x is string => typeof x === 'string')
+
+
 ---
 
 <html lang="fi">
@@ -49,11 +57,7 @@ const breadcrumbs = [
 <body>
 	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
-		{dialog === 'create-user-failed' && <div>Tunnuksen luomisessa tapahtui tuntematon virhe.</div>}
-		{dialog === 'invalid-data' && <div>Tarkista että syöttämäsi tiedot ovat kohdillaan, kaikki vaaditut kentät on
-			annettu, ja että salasanat täsmäävät.</div>}
-		{dialog === 'password-failure' && <div>Tunnusta luotaessa tapahtui virhe salasanan käsittelyssä. Yritä
-			uudelleen.</div>}
+		<Notification messages={notifications} title="Tapahtui virhe" />
 		<h1>Ensimmäinen kirjautuminen</h1>
 		<p>Tarvitsemme jonkin verran pakollisia tietoja, jotta tapahtumien järjestäminen olisi sujuvaa.</p>
 		<form action="/profile/complete-register-by-email" method="POST">

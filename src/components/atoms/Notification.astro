@@ -1,0 +1,63 @@
+---
+import Icon from "$/components/Icon.astro";
+
+export interface Props {
+	messages: string[]
+	title?: string
+}
+
+const { messages, title } = Astro.props as Props
+
+---
+
+{messages.length > 0 && <>
+	<dialog id="notification" open>
+		<form method="dialog">
+			<button aria-label="Sulje ilmoitus" class="close-dialog" type="submit">
+				<Icon href="/icons/cross.svg" />
+			</button>
+		</form>
+		<div role="document">
+			<h1>{title || 'Tiedoksi'}</h1>
+			{messages.map((message) => <div class="message">{message}</div>)}
+		</div>
+	</dialog>
+	<style>
+		#notification {
+			background: var(--bg-light-color);
+			border: thin solid var(--border-color);
+			border-radius: 0.25rem;
+			box-shadow: var(--big-shadow);
+			margin-top: -1.5rem;
+			min-width: 18rem;
+			max-width: 45rem;
+			width: calc(50vw + 10rem);
+			z-index: 1;
+		}
+
+		#notification h1 {
+			font-family: inherit;
+			font-size: 1.3333rem;
+			margin: 0 0 0.5rem;
+		}
+
+		#notification .close-dialog {
+			background: unset;
+			border: unset;
+			border-radius: 50%;
+			box-shadow: unset;
+			cursor: pointer;
+			float: right;
+			margin-left: 1rem;
+			outline-offset: 6px;
+			padding: 0;
+			min-width: 0;
+			line-height: 1;
+		}
+
+		#notification .message + .message {
+			border-top: 3px double var(--border-color);
+			margin: 1rem 0;
+		}
+	</style>
+</>}

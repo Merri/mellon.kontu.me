@@ -1,4 +1,5 @@
 ---
+import Notification from "$/components/atoms/Notification.astro";
 import BaseHead from "$/components/BaseHead.astro";
 import PageFooter from "$/components/PageFooter.astro";
 import PageHeader from "$/components/PageHeader.astro";
@@ -40,6 +41,10 @@ const breadcrumbs = [
 	{ title: 'Kirjautuminen' }
 ]
 
+const notifications: string[] = [
+	dialog === 'login-failed' && 'Kirjautuminen ei onnistunut.',
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 <html lang="fi">
@@ -49,7 +54,7 @@ const breadcrumbs = [
 <body>
 	<PageHeader breadcrumbs={breadcrumbs} />
 	<main id="main">
-		{dialog === 'login-failed' && <div>Kirjautuminen ei onnistunut.</div>}
+		<Notification messages={notifications} title="Tapahtui virhe" />
 		<h1>Kirjautuminen</h1>
 		<form action="/profile/complete-login-by-email" method="POST">
 			<p>Olet kirjautumassa sisään sähköpostilinkillä. Vahvista kirjautuminen antamalla syntymäpäiväsi.</p>

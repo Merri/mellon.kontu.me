@@ -1,4 +1,5 @@
 ---
+import Notification from "$/components/atoms/Notification.astro";
 import BaseHead from "$/components/BaseHead.astro";
 import Icon from "$/components/Icon.astro";
 import PageFooter from "$/components/PageFooter.astro";
@@ -85,6 +86,11 @@ const breadcrumbs = [
 	{ title: 'Salasanan asettaminen' }
 ]
 
+const notifications: string[] = [
+	dialog === 'database-failure' && 'Salasanan tallentamisessa tapahtui virhe. Salasana ei mahdollisesti vaihtunut.',
+	errors.has('newPassword') && 'Uudet salasanat eivät täsmää.'
+].filter((x): x is string => typeof x === 'string')
+
 ---
 
 <html lang="fi">
@@ -95,9 +101,7 @@ const breadcrumbs = [
 	<PageHeader breadcrumbs={breadcrumbs} />
 
 	<main id="main">
-		{dialog === 'database-failure' && <div>Salasanan tallentamisessa tapahtui virhe. Salasana ei mahdollisesti
-			vaihtunut.</div>}
-		{errors.has('newPassword') && <div>Uudet salasanat eivät täsmää.</div>}
+		<Notification messages={notifications} title="Tapahtui virhe" />
 		<h1>Salasanan asettaminen</h1>
 		{dialog !== 'success' ? <form action="" method="POST">
 			<p class="form-field">
