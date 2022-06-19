@@ -328,7 +328,7 @@ const notifications: string[] = [
 									no={regLevel==='registered' ? 'Ehkä' : 'Ei' } value="yes" yes="Kyllä" />
 							</label>}
 						</dd>
-						{meetupInterval && <dd class="form-field reg-days">
+						{meetupInterval && <dd class="form-field reg-days" data-level={`level[${reg.id}]`}>
 							<span>Paikalla:</span>
 							<span class="dayspicks">
 								{meetupDays.map(date => {
@@ -345,6 +345,28 @@ const notifications: string[] = [
 						</dd>}
 					</div>})}
 				</dl>
+				<script type="module">
+					const toggles = document.querySelectorAll('[name^="level["][name$="]"]');
+
+					function updateDays() {
+						toggles.forEach(toggle => {
+							if (toggle instanceof HTMLInputElement) {
+								const target = document.querySelector(`[data-level="${toggle.name}"]`);
+								if (target) {
+									target.style.visibility = toggle.checked ? 'visible' : 'hidden';
+									const boxes = Array.from(target.querySelectorAll('[type="checkbox"]'))
+									if (boxes.every(box => box.checked === false)) {
+										boxes.forEach(box => box.checked = true)
+									}
+								}
+							}
+						})
+					}
+
+					updateDays();
+
+					toggles.forEach(toggle => toggle.addEventListener('click', updateDays));
+				</script>
 				<p class="form-field participation-button">
 					<button type="submit" class="button-alt2 cancel-button" name="cancel"
 						onclick="return confirm('Haluatko varmasti perua osallistumisen?')"
