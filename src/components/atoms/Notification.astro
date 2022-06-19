@@ -1,4 +1,6 @@
 ---
+import { marked } from "marked";
+
 import Icon from "$/components/Icon.astro";
 
 export interface Props {
@@ -19,7 +21,8 @@ const { messages, title } = Astro.props as Props
 		</form>
 		<div role="document">
 			<h1>{title || 'Tiedoksi'}</h1>
-			{messages.map((message) => <div class="message">{message}</div>)}
+			{messages.map((message) =>
+			<div class="message" set:html={marked.parse(message)} />)}
 		</div>
 	</dialog>
 	<style>
@@ -55,9 +58,12 @@ const { messages, title } = Astro.props as Props
 			line-height: 1;
 		}
 
-		#notification .message + .message {
+		#notification .message+.message {
 			border-top: 3px double var(--border-color);
-			margin: 1rem 0;
+		}
+
+		#notification .message:last-child :global(p) {
+			margin-bottom: 0;
 		}
 	</style>
 </>}
