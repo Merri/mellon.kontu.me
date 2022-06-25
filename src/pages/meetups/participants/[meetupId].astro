@@ -20,6 +20,7 @@ import NotAuthorized from '$/pages/403.astro'
 import type { Meetup, Member, Registration } from "$/types/db"
 import Notification from "$/components/atoms/Notification.astro"
 import { isString } from "$/lib/types"
+import FoodTable from "$/components/FoodTable.astro"
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -61,14 +62,14 @@ type SuccessType = 'update-success' | 'nothing-to-update'
 const errors = new Set<ErrorType>()
 const success = new Set<SuccessType>()
 
+const regInfoMap = (hasAccess ? registrations : []).reduce<Map<number, RegInfo>>((map, reg) => {
+	map.set(reg.id, getRegInfo(reg))
+	return map
+}, new Map())
+
 if (hasAccess && isPost) {
 	const regMap = registrations.reduce<Map<number, Registration>>((map, reg) => {
 		map.set(reg.id, reg)
-		return map
-	}, new Map())
-
-	const regInfoMap = registrations.reduce<Map<number, RegInfo>>((map, reg) => {
-		map.set(reg.id, getRegInfo(reg))
 		return map
 	}, new Map())
 
@@ -227,6 +228,10 @@ const memberRows = members.map(member => ({
 const overnightOptions = getOvernightOptions(meetup)
 const numDays = meetup && meetup.begin != null && meetup.end != null ? differenceInDays(endOfDay(meetup.end), startOfDay(meetup.begin)) + 1 : 1
 
+const fullRegs = registrations.map((reg) => ({ ...reg, info: regInfoMap.get(reg.id) || {} }))
+
+const allergyRegs = fullRegs.filter((reg) => reg.info.info || reg.info.allergies).sort((a, b) => a.id - b.id)
+
 const breadcrumbs = meetup ? [
 	{ href: '/', title: 'Etusivu' },
 	{ href: `/meetups`, title: 'Miitit' },
@@ -277,10 +282,13 @@ const notifications: string[] = [
 						</tr>
 					</thead>
 					<tbody>
-						{memberRows.map((member, memberIndex) => member.regs.map((reg, index) =>
-						<ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index}
+						{memberRows.map((member, memberIndex) => member.regs.map((reg, index) => {
+						const regInfo = regInfoMap.get(reg.id) || {}
+						return <ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index}
 							reg={reg} regIndex={registrations.findIndex(r=> r === reg)}
-							overnightOptions={overnightOptions} numDays={numDays} sauna={meetup.enableSaunaOption} />))}
+							overnightOptions={overnightOptions} numDays={numDays} hasSauna={meetup.enableSaunaOption}
+							name={regInfo.name} overnight={regInfo.overnight} sauna={regInfo.sauna} />
+							}))}
 					</tbody>
 				</table>
 			</div>
@@ -293,7 +301,78 @@ const notifications: string[] = [
 		</form>
 		{isOwner && <p>Olet miitin hallinnoija. Sinulta ei voi poistaa tätä oikeutta vaikka et olisi merkattuna miitin
 			järjestäjäksi.</p>}
+		{allergyRegs.length > 0 && <>
+			<h2>Allergia- ja lisätiedot</h2>
+			<p>Nämä tiedot ovat ilmoittautumisjärjestyksessä. Uudet tiedot tulevat aina listan loppuun.</p>
+			<dl class="allergy-list">
+				{allergyRegs.map(reg => <div class="allergy-row">
+					<dt>{reg.publicname}<br /><small>{reg.info.name}</small></dt>
+					<dd>
+						{!!reg.info.allergies && <>
+							<h3>Allergia</h3>
+							<pre>{reg.info.allergies}</pre>
+						</>}
+						{!!reg.info.info && <>
+							<h3>Lisätietoja</h3>
+							<pre>{reg.info.info}</pre>
+						</>}
+					</dd>
+				</div>)}
+			</dl>
+		</>}
+		<h2>Ruokavalio</h2>
+		<FoodTable fullRegs={fullRegs} />
 		<style>
+			.allergy-list {
+				border: 1px solid var(--border-color);
+				margin: 1rem 0;
+			}
+
+			.allergy-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 1rem;
+				padding: 1rem;
+			}
+
+			.allergy-row:nth-child(odd) {
+				background-color: var(--bg-light-color-alt);
+			}
+
+			.allergy-row:not(:first-child) {
+				border-top: 3px double var(--border-color);
+			}
+
+			.allergy-row dt {
+				flex: 0 1 12rem;
+				font-size: 1.125rem;
+				font-weight: bold;
+				width: 12rem;
+			}
+
+			.allergy-row dt small {
+				font-weight: normal;
+			}
+
+			.allergy-row dd {
+				flex: auto;
+				margin: 0;
+				max-width: 40rem;
+				padding: 0;
+			}
+
+			.allergy-row h3 {
+				font-family: inherit;
+				font-size: 1.125rem;
+				margin: 0;
+			}
+
+			.allergy-row pre {
+				font: inherit;
+				margin: 0.25rem 0 1rem;
+				white-space: pre-wrap;
+			}
+
 			.horizontally-scrollable {
 				margin: 0 -1rem;
 			}

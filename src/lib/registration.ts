@@ -22,6 +22,10 @@ export interface RegInfo extends JwtPayload {
 	sauna?: string
 }
 
+export interface FullReg extends Omit<Registration, 'info'> {
+	info: RegInfo
+}
+
 export const getRegInfo = function getRegInfo(reg: Registration): RegInfo {
 	if (reg.info) {
 		try {

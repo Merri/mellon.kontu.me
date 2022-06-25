@@ -1,15 +1,14 @@
 import { createSignal } from 'solid-js'
 import type { JSX } from 'solid-js'
 
-import { getRegInfo, getRegLevel } from '$/lib/registration'
+import { getRegInfo, getRegLevel, RegInfo } from '$/lib/registration'
 import type { RegLevelType } from '$/lib/registration'
 import { formatPrettyReference } from '$/lib/reference'
 import type { Registration } from '$/types/db'
 
-import { CheckPick } from './CheckPick'
 import { Toggle } from './atoms/Toggle'
 
-interface ParticipantRowProps {
+interface ParticipantRowProps extends Pick<RegInfo, 'name' | 'overnight' | 'sauna' > {
 	row: number
 	rows: number
 	index: number
@@ -22,13 +21,12 @@ interface ParticipantRowProps {
 	reg: Registration
 	regIndex: number
 	numDays: number
-	sauna: boolean
+	hasSauna: boolean
 }
 
 export function ParticipantRow(props: ParticipantRowProps) {
 	const [regLevel, setRegLevel] = createSignal(getRegLevel(props.reg))
 
-	const regInfo = getRegInfo(props.reg)
 	const overnightOptions = new Set(props.overnightOptions)
 
 	function indexStyle(): JSX.CSSProperties {
@@ -51,7 +49,7 @@ export function ParticipantRow(props: ParticipantRowProps) {
 			</td>
 			<td>
 				<strong>{props.reg.publicname}</strong>
-				<small style="display:block">{regInfo.name}</small>
+				<small style="display:block">{props.name}</small>
 			</td>
 			<td style="text-align:right">{props.reg.age}</td>
 			<td style="text-align:center">
@@ -85,43 +83,43 @@ export function ParticipantRow(props: ParticipantRowProps) {
 					pv:{' '}
 				</small>
 				<select id="overnight" name={`overnight[${props.reg.id}]`}>
-					{!overnightOptions.has(regInfo.overnight || '') && (
+					{!overnightOptions.has(props.overnight || '') && (
 						<option value="" selected>
-							{regInfo.overnight}
+							{props.overnight}
 						</option>
 					)}
 					{overnightOptions.has('bed') && (
-						<option value="bed" selected={regInfo.overnight === 'bed'}>
+						<option value="bed" selected={props.overnight === 'bed'}>
 							Sänky
 						</option>
 					)}
 					{overnightOptions.has('camping') && (
-						<option value="camping" selected={regInfo.overnight === 'camping'}>
+						<option value="camping" selected={props.overnight === 'camping'}>
 							Teltta
 						</option>
 					)}
 					{overnightOptions.has('dailyVisitor') && (
-						<option value="dailyVisitor" selected={regInfo.overnight === 'dailyVisitor'}>
+						<option value="dailyVisitor" selected={props.overnight === 'dailyVisitor'}>
 							Päivävieras
 						</option>
 					)}
 				</select>
 			</td>
-			<td hidden={!props.sauna} style="text-align:center">
+			<td hidden={!props.hasSauna} style="text-align:center">
 				<select name={`sauna[${props.reg.id}]`}>
-					<option value="none" selected={regInfo.sauna === 'none'}>
+					<option value="none" selected={props.sauna === 'none'}>
 						-
 					</option>
-					<option value="any" selected={regInfo.sauna === 'any'}>
+					<option value="any" selected={props.sauna === 'any'}>
 						Seka
 					</option>
-					<option value="male" selected={regInfo.sauna === 'male'}>
+					<option value="male" selected={props.sauna === 'male'}>
 						Miesten
 					</option>
-					<option value="female" selected={regInfo.sauna === 'female'}>
+					<option value="female" selected={props.sauna === 'female'}>
 						Naisten
 					</option>
-					<option value="family" selected={regInfo.sauna === 'family'}>
+					<option value="family" selected={props.sauna === 'family'}>
 						Perhe
 					</option>
 				</select>

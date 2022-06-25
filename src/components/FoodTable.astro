@@ -1,0 +1,97 @@
+---
+import type { FullReg } from "$/lib/registration";
+
+export interface Props {
+	fullRegs: FullReg[]
+}
+
+const { fullRegs } = Astro.props as Props
+
+const foodStats = fullRegs.reduce<Record<string, { count: number, names: string[] }>>(
+	(stats, { publicname, info: { diet } }) => {
+		const key = diet === 'lacto-ovarian' ? 'lactoOvarian' : diet
+		if (key && stats[key] != null) {
+			stats[key].count++
+			stats[key].names.push(publicname)
+		} else {
+			stats.unknown.count++
+			stats.unknown.names.push(publicname)
+		}
+
+		return stats
+	}, {
+	all: { count: 0, names: [] },
+	semivegetarian: { count: 0, names: [] },
+	lactoOvarian: { count: 0, names: [] },
+	lactovegetarian: { count: 0, names: [] },
+	pescovegetarian: { count: 0, names: [] },
+	vegan: { count: 0, names: [] },
+	none: { count: 0, names: [] },
+	unknown: { count: 0, names: [] }
+})
+
+---
+
+<table>
+	<thead>
+		<tr>
+			<th>Ruokavalio</th>
+			<th>Määrä</th>
+			<th>Ruokailijat</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>Kaikkiruokainen</td>
+			<td>{foodStats.all.count}</td>
+			<td>{foodStats.all.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Semivegetaarinen</td>
+			<td>{foodStats.semivegetarian.count}</td>
+			<td>{foodStats.semivegetarian.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Lakto-ovovegetaarinen</td>
+			<td>{foodStats.lactoOvarian.count}</td>
+			<td>{foodStats.lactoOvarian.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Laktovegetaarinen</td>
+			<td>{foodStats.lactovegetarian.count}</td>
+			<td>{foodStats.lactovegetarian.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Pescovegetaarinen</td>
+			<td>{foodStats.pescovegetarian.count}</td>
+			<td>{foodStats.pescovegetarian.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Vegaani</td>
+			<td>{foodStats.vegan.count}</td>
+			<td>{foodStats.vegan.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Ei yhteisruokailuja</td>
+			<td>{foodStats.none.count}</td>
+			<td>{foodStats.none.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+		<tr>
+			<td>Tieto puuttuu</td>
+			<td>{foodStats.unknown.count}</td>
+			<td>{foodStats.unknown.names.sort().map(name => <span>{name}<br /></span>)}</td>
+		</tr>
+	</tbody>
+</table>
+<style>
+	table {
+		border-collapse: separate;
+		border-spacing: 1rem;
+	}
+	th {
+		text-align: left;
+	}
+	td {
+		vertical-align: top;
+	}
+</style>
