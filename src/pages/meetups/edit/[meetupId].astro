@@ -1,0 +1,229 @@
+---
+import { differenceInDays, endOfDay, startOfDay } from "date-fns"
+import JWT from 'jsonwebtoken'
+
+import BaseHead from "$/components/BaseHead.astro"
+import Icon from "$/components/Icon.astro"
+import OrganizerMenu from "$/components/OrganizerMenu.astro"
+import { ParticipantRow } from '$/components/ParticipantRow'
+import PageFooter from "$/components/PageFooter.astro"
+import PageHeader from "$/components/PageHeader.astro"
+import { getMemberIdFromCookie } from "$/lib/auth"
+import { getLogger } from "$/lib/bugsnag"
+import { meetupToZonedTime, toZonedTime } from "$/lib/date"
+import { sql } from "$/lib/db"
+import { getOvernightOptions } from '$/lib/meetup'
+import { getRegInfo, getRegLevel } from '$/lib/registration'
+import type { RegLevelType, RegInfo } from '$/lib/registration'
+import NotAuthenticated from '$/pages/401.astro'
+import NotAuthorized from '$/pages/403.astro'
+import type { Meetup, Member, Organization, Place, Registration } from "$/types/db"
+import Notification from "$/components/atoms/Notification.astro"
+import { isString } from "$/lib/types"
+import FoodTable from "$/components/FoodTable.astro"
+import { Toggle } from "$/components/atoms/Toggle"
+
+const now = new Date()
+const nowFinnish = toZonedTime(new Date())
+const meetupId = Math.round(Number(Astro.params.meetupId))
+
+const memberId = getMemberIdFromCookie(Astro.request.headers.get('cookie'))
+const member = memberId != null ? (await sql<Member[]>`SELECT * FROM members WHERE id = ${memberId}`).pop() : undefined
+const meetup = (meetupId > 0 || undefined) && (await sql<Meetup[]>`
+	SELECT *
+	FROM meetups
+	WHERE id = ${meetupId}
+`).map(meetupToZonedTime).pop()
+
+const organizations: Organization[] = member ? (await sql<Organization[]>`SELECT * FROM organizations`) : []
+const places: Place[] = member ? (await sql<Place[]>`SELECT * FROM places ORDER BY "name" ASC, "postalCode" ASC NULLS LAST`) : []
+
+async function fetchRegistrations(meetupId: number) {
+	return sql<Registration[]>`
+		SELECT *
+		FROM registrations
+		WHERE "meetupId" = ${meetupId}
+		ORDER BY "isOrganizer" DESC,
+			"cancelled" ASC NULLS FIRST,
+			"confirmed" ASC NULLS LAST,
+			"registered" ASC NULLS LAST,
+			"id" ASC
+	`
+}
+
+const registrations: Registration[] = meetup && member ? await fetchRegistrations(meetup.id) : []
+
+const hasData = meetup != null && member != null
+const isOwner = hasData && meetup.memberId === member.id
+const isOrganizer = hasData && registrations.some(reg => reg.isOrganizer && reg.memberId === member.id)
+const hasAccess = isOwner || isOrganizer
+
+const isPost = Astro.request.method.toUpperCase() === 'POST'
+
+
+const breadcrumbs = meetup ? [
+	{ href: '/', title: 'Etusivu' },
+	{ href: `/meetups`, title: 'Miitit' },
+	{ href: `/meetups/view/${meetup.id}`, title: meetup.title },
+	{ title: 'Muokkaa miittiä' }
+] : []
+
+if (hasAccess && !isPost) {
+	Astro.response.headers.set('Cache-Control', 'private, max-age=0')
+}
+
+---
+
+{(hasAccess && <html lang="fi">
+
+<BaseHead title={`Muokkaa miittiä ${meetup.title}`} description="Miitin perustietojen muokkaaminen" />
+
+<body>
+	<PageHeader breadcrumbs={breadcrumbs}>
+		<OrganizerMenu meetupId={meetup.id} />
+	</PageHeader>
+
+	<main id="main">
+
+		<h1>
+			<Icon href="/icons/edit-1.svg" size={3.5} /> Muokkaa miittiä
+		</h1>
+
+		<form action="" method="POST">
+			<p class="form-field">
+				<label>Tapahtumapaikka:
+					<select name="placeId">
+						{places.map(place =>
+						<option value={place.id} selected={meetup.placeId===place.id}>{place.name}</option>)}
+					</select>
+				</label>
+			</p>
+			<p>
+				Puuttuuko etsimäsi paikka? <a href={`/places/add?continue=/meetups/edit/${meetup.id}`}>Lisää uusi!</a>
+			</p>
+			<p class="form-field">
+				<label>Tapahtuman nimi: <input id="title" name="title" placeholder="Tapahtuman nimi" required
+						type="text" value={meetup.title} autocomplete="off" size={50} /></label>
+				<small>Pakollinen.</small>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.organizer==='none' } name="organizer" no="Ei ole" value="none" yes="On" />
+					Oheistapahtuma
+				</label><br />
+				<small>Järjestetäänkö tämä tapahtuma toisen tapahtuman ohessa?</small>
+			</p>
+			<p class="form-field">
+				<label>Järjestäjä: <select name="organizationId">
+						<option value="" selected={meetup.organizationId==null}>Yksityishenkilö</option>
+						{organizations.map(organization =>
+						<option value={organization.id} selected={meetup.organizationId===organization.id}>
+							{organization.name}</option>
+						)}
+					</select>
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.isFree } name="isFree" no="Ei" value="yes" yes="Kyllä" />
+					Tapahtuma on ilmainen
+				</label>
+			</p>
+			<p class="form-field">
+				<label>Kuvaus:<br /><textarea cols={80} rows={15}
+						name="description">{meetup.description}</textarea></label>
+				<small>Voit käyttää Markdownia tekstin muotoiluun.</small>
+			</p>
+			<p class="form-field">
+				<label>Sähköpostiosoite:
+					<input id="contentEmail" size={30} type="email" name="contactEmail" autocomplete="off"
+						value={meetup.contactEmail} />
+				</label>
+				<small>Mistä ihmiset voivat tarvittaessa kysyä lisätietoja?</small>
+			</p>
+			<p class="form-field">
+				<label>Linkki:
+					<input id="contentUrl" size={50} type="url" name="contactUrl" autocomplete="off"
+						value={meetup.contactUrl} />
+				</label>
+				<small>Esimerkiksi tapahtuman kotisivu, keskustelualueen ketju tms.</small>
+			</p>
+			<p class="form-field">
+				<label>Sänkypaikkoja:
+					<input type="number" name="beds" min={0} max={200} step={1} value={meetup.beds} />
+				</label>
+			</p>
+			<p class="form-field">
+				<label>Ikäraja:
+					<input type="number" name="ageLimit" min={0} max={33} step={1} value={meetup.ageLimit} />
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.enableFamilyMembers } name="enableFamilyMembers" no="Ei" value="yes"
+						yes="Kyllä" />
+					Salli perhejäsenet
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.enableAllergyFields } name="enableAllergyFields" no="Ei" value="yes"
+						yes="Kyllä" />
+					Kysy allergiatiedot
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.enableSaunaOption } name="enableSaunaOption" no="Ei" value="yes"
+						yes="Kyllä" />
+					Kysy saunavuoroista
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.enableCampingMembers } name="enableCampingMembers" no="Ei" value="yes"
+						yes="Kyllä" />
+					Salli leiriytyminen
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.enableDailyVisitors } name="enableDailyVisitors" no="Ei" value="yes"
+						yes="Kyllä" />
+					Salli päivävierailut
+				</label>
+			</p>
+			<p class="form-field">
+				<label>
+					Viitenumeron peruste:
+					<input type="text" name="baseCreditorReference" pattern="[0-9]{3,19}" />
+				</label>
+				<small>Tämä vaaditaan osallistumismaksujen maksamiseen tilille. Lopullinen viitenumero lasketaan tästä
+					numerosta.</small>
+			</p>
+			<p class="form-field">
+				<label>
+					<Toggle checked={meetup.isFinnishReference } name="isFinnishReference" no="Ei" value="yes"
+						yes="Kyllä" />
+					Käytä suomalaista viitenumeroa
+				</label><br />
+				<small>Suomalaisen viitenumeron muodostus poikkeaa kansainvälisestä järjestelmästä. Valitse "kyllä" jos
+					maksu tapahtuu suomalaisen pankin tilille.</small>
+			</p>
+			<p>
+				<button type="submit">
+					<Icon href="/icons/save.svg" />
+					Tallenna muutokset
+				</button>
+			</p>
+		</form>
+
+	</main>
+
+	<PageFooter />
+</body>
+
+</html>) ||
+(member != null &&
+<NotAuthorized />) ||
+<NotAuthenticated />}
