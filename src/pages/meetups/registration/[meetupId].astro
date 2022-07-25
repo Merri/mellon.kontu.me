@@ -17,6 +17,7 @@ import type { Meetup, Member, Place, Registration } from '$/types/db'
 import type { FamilyMember } from '$/types/registrations'
 import Notification from '$/components/atoms/Notification.astro'
 import { isString } from '$/lib/types'
+import { Toggle } from '$/components/atoms/Toggle'
 
 const now = new Date()
 const nowFinnish = toZonedTime(new Date())
@@ -48,6 +49,7 @@ const hasAllergies = member && meetup ? meetup.enableAllergyFields : false
 const hasFamilyMembers = member && meetup ? meetup.enableFamilyMembers : false
 const hasOvernight = meetup ? meetup.enableCampingMembers || meetup.enableDailyVisitors : false
 const hasSauna = place && meetup ? place.hasSauna && meetup.enableSaunaOption : false
+const hasWhatsApp = meetup ? meetup.enableWhatsApp : false
 
 /** Only relevant for person who is not logged in. */
 let email = ''
@@ -76,7 +78,9 @@ if (meetup && place) {
 				const i = Number(index)
 				if (persons[i] == null && persons.length < 6) persons[i] = {}
 				if (persons[i]) {
-					if (field === 'age' || field === 'id') {
+					if (field === 'allowWhatsApp') {
+						if (value === 'yes') persons[i][field] = true
+					} else if (field === 'age' || field === 'id') {
 						if (value) persons[i][field] = parseInt(value.trim(), 10) || 0
 					} else {
 						// @ts-ignore
@@ -98,6 +102,7 @@ if (meetup && place) {
 			if (!member) delete person.info
 			if (!hasOvernight) delete person.overnight
 			if (!hasSauna) delete person.sauna
+			if (!hasWhatsApp) delete person.allowWhatsApp
 		})
 
 		try {
@@ -158,6 +163,7 @@ if (meetup && place) {
 						name: person.name,
 						overnight: person.overnight,
 						sauna: person.sauna,
+						allowWhatsApp: person.allowWhatsApp,
 					},
 					import.meta.env.JWT_DATABASE,
 					{ algorithm: 'HS256' }
@@ -308,6 +314,11 @@ const notifications: string[] = [
 			<input type="hidden" name="person[0][publicname]" value="" />
 			<input type="hidden" name="person[0][name]" value="" />
 			<input type="hidden" name="person[0][age]" value="" />
+			{meetup.enableWhatsApp && <label for="allowWhatsApp">
+				<Toggle id="allowWhatsApp" checked={person.allowWhatsApp} name="person[0][allowWhatsApp]" no="Ei"
+					value="yes" yes="Kyllä" /> Salli WhatsApp<br />
+				<small>Saako järjestäjä liittää puhelinnumerosi miittiläisten yhteiseen WhatsApp-ryhmään?</small>
+			</label>}
 			{place.hasSauna && <>
 				{meetup.enableSaunaOption ? <p class="form-field">
 					<label for="sauna">

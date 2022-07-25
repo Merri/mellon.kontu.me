@@ -8,4 +8,5 @@ export interface FamilyMember {
 	allergies?: string
 	sauna?: string
 	info?: string
+	allowWhatsApp?: boolean
 }

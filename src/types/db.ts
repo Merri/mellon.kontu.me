@@ -16,6 +16,7 @@ export interface Meetup {
 	enableDailyVisitors: boolean
 	enableFamilyMembers: boolean
 	enableSaunaOption: boolean
+	enableWhatsApp: boolean
 	isFree: boolean
 	begin: Date | null
 	end: Date | null
