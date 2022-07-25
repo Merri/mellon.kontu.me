@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js'
 import type { JSX } from 'solid-js'
 
-import { getRegInfo, getRegLevel, RegInfo } from '$/lib/registration'
+import { getRegLevel, RegInfo } from '$/lib/registration'
 import type { RegLevelType } from '$/lib/registration'
 import { formatPrettyReference } from '$/lib/reference'
 import type { Registration } from '$/types/db'
@@ -22,6 +22,8 @@ interface ParticipantRowProps extends Pick<RegInfo, 'name' | 'overnight' | 'saun
 	regIndex: number
 	numDays: number
 	hasSauna: boolean
+	hasWhatsApp: boolean
+	allowWhatsApp: boolean
 }
 
 export function ParticipantRow(props: ParticipantRowProps) {
@@ -129,6 +131,7 @@ export function ParticipantRow(props: ParticipantRowProps) {
 					<a href={`mailto:${props.email}`}>{props.fullname}</a> ({props.publicname})
 					<br />
 					{props.phone || 'Ei puhelinnumeroa'}
+					{props.hasWhatsApp && props.allowWhatsApp && ` (WhatsApp OK!)`}
 					<br />
 					{props.reg.bankReference != null && (
 						<span>

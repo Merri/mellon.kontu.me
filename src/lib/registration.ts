@@ -20,6 +20,7 @@ export interface RegInfo extends JwtPayload {
 	allergies?: string
 	diet?: string
 	sauna?: string
+	allowWhatsApp?: boolean
 }
 
 export interface FullReg extends Omit<Registration, 'info'> {

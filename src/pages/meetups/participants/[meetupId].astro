@@ -287,7 +287,9 @@ const notifications: string[] = [
 						return <ParticipantRow {...member} row={memberIndex + 1} rows={member.regs.length} index={index}
 							reg={reg} regIndex={registrations.findIndex(r=> r === reg)}
 							overnightOptions={overnightOptions} numDays={numDays} hasSauna={meetup.enableSaunaOption}
-							name={regInfo.name} overnight={regInfo.overnight} sauna={regInfo.sauna} />
+							hasWhatsApp={meetup.enableWhatsApp}
+							name={regInfo.name} overnight={regInfo.overnight} sauna={regInfo.sauna}
+							allowWhatsApp={!!regInfo.allowWhatsApp} />
 							}))}
 					</tbody>
 				</table>
