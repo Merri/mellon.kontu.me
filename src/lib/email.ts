@@ -1,9 +1,12 @@
 import nodemailer from 'nodemailer'
 import type Mail from 'nodemailer/lib/mailer'
+import sgMail from '@sendgrid/mail'
 
 import { getLogger } from './bugsnag'
 
 import type { Member } from '$/types/db'
+
+sgMail.setApiKey(import.meta.env.SENDGRID_API_KEY)
 
 const transporter = nodemailer.createTransport({
 	host: import.meta.env.PRIMARY_EMAIL_HOST,
@@ -41,6 +44,18 @@ export function getMemberEmailField(member: Member) {
 }
 
 /** Sends mail defaulting sender to the app primary email. */
-export function sendMail(options: Mail.Options) {
+export function sendMailSMTP(options: Mail.Options) {
 	transporter.sendMail({ from: appEmailField, ...options }, logError)
+}
+
+interface MailData {
+	to?: string
+	subject: string
+	text: string
+	html: string
+}
+
+/** Sends mail using SendGrid API. */
+export function sendMail(mailData: MailData) {
+	sgMail.send({ from: appEmailField, ...mailData }).catch(logError)
 }

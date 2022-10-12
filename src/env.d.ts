@@ -19,6 +19,8 @@ interface ImportMetaEnv {
 	readonly PRIMARY_EMAIL_USER: string
 	readonly PRIMARY_EMAIL_PW: string
 
+	readonly SENDGRID_API_KEY: string
+
 	readonly SECONDARY_EMAIL_HOST: string
 	readonly SECONDARY_EMAIL_PORT: number
 	readonly SECONDARY_EMAIL_NAME: string
