@@ -100,7 +100,7 @@ const response: Response | DialogString | Errors = await new Promise((resolve) =
 
 				const text = getText(dobResult)
 
-				sendMail({
+				await sendMail({
 					to: getMemberEmailField(updatedMember || member),
 					subject: 'Käyttäjätietojasi päivitettiin',
 					text,

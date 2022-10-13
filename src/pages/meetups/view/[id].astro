@@ -182,7 +182,7 @@ if (isSubmit && member) {
 						url: Astro.request.url
 					})
 
-					sendMail({
+					await sendMail({
 						to: getMemberEmailField(member),
 						subject: `✓ Osallistut miittiin!`,
 						text,

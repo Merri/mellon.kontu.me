@@ -56,6 +56,6 @@ interface MailData {
 }
 
 /** Sends mail using SendGrid API. */
-export function sendMail(mailData: MailData) {
-	sgMail.send({ from: appEmailField, ...mailData }).catch(logError)
+export async function sendMail(mailData: MailData) {
+	await sgMail.send({ from: appEmailField, ...mailData }).catch(logError)
 }

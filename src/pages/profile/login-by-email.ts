@@ -58,7 +58,7 @@ export async function post({ request }: SSRRoute) {
 	const subject = member ? 'Kirjautumislinkki Melloniin' : 'Linkki tunnuksen luontiin Melloniin'
 	const to = member ? getMemberEmailField(member) : email
 
-	sendMail({
+	await sendMail({
 		to,
 		subject,
 		text,

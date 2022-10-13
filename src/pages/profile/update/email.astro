@@ -77,7 +77,7 @@ const response: DialogString | Errors = await new Promise((resolve) => {
 				return resolve(errors)
 			}
 
-			sendMail({
+			await sendMail({
 				to: getMemberEmailField(member),
 				subject: 'Sähköpostiosoitteen vaihto',
 				text: oldEmailText,
