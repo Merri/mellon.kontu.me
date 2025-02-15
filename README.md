@@ -1,3 +1,7 @@
+I've decided that I simply can't work on this project. I've had to stretch myself too thin in the past few years so it is better to just let some things go.
+
+---
+
 # Mellon
 
 An app to manage meetups. Currently only in Finnish language and on Finnish timezone (EEST).
